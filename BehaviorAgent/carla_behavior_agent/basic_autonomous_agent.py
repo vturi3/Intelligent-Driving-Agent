@@ -10,7 +10,7 @@ This module provides an NPC agent to control the ego vehicle
 from __future__ import print_function
 
 import carla
-from basic_agent import BasicAgent
+from behavior_agent import BehaviorAgent
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 import importlib
 
@@ -82,7 +82,7 @@ class MyTeamAgent(AutonomousAgent):
             if not hero_actor:
                 return carla.VehicleControl()
             
-            self._agent = BasicAgent(hero_actor, opt_dict=self.configs)
+            self._agent = BehaviorAgent(hero_actor, opt_dict=self.configs)
 
             plan = []
             prev_wp = None
@@ -97,12 +97,6 @@ class MyTeamAgent(AutonomousAgent):
             return carla.VehicleControl()
 
         else:
-            # Release other vehicles 
-            vehicle_list = CarlaDataProvider.get_world().get_actors().filter("*vehicle*")
-            for actor in vehicle_list:
-                if not('role_name' in actor.attributes and actor.attributes['role_name'] == 'hero'):
-                    actor.destroy()
-            
             controls = self._agent.run_step()
             if self.__show:
                 self.showServer.send_frame("RGB", input_data["Center"][1])

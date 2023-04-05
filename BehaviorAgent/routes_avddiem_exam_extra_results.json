@@ -1,0 +1,330 @@
+{
+    "_checkpoint": {
+        "global_record": {
+            "index": -1,
+            "route_id": -1,
+            "status": "Failed",
+            "infractions": {
+                "collisions_layout": 0.382,
+                "collisions_pedestrian": 0.0,
+                "collisions_vehicle": 4.204,
+                "red_light": 0.0,
+                "stop_infraction": 0.382,
+                "outside_route_lanes": 0.001,
+                "min_speed_infractions": 1.147,
+                "yield_emergency_vehicles_infractions": 0.0,
+                "scenario_timeouts": 1.72,
+                "route_dev": 0.573,
+                "vehicle_blocked": 0.191,
+                "route_timeout": 0.191
+            },
+            "scores_mean": {
+                "score_composed": 8.827356,
+                "score_route": 55.46,
+                "score_penalty": 0.227806
+            },
+            "scores_std_dev": {
+                "score_composed": 8.165,
+                "score_route": 31.092,
+                "score_penalty": 0.196
+            },
+            "meta": {
+                "exceptions": [
+                    [
+                        "RouteScenario_8_rep0",
+                        0,
+                        "Failed - Agent timed out"
+                    ],
+                    [
+                        "RouteScenario_9_rep0",
+                        1,
+                        "Failed - Agent deviated from the route"
+                    ],
+                    [
+                        "RouteScenario_10_rep0",
+                        2,
+                        "Failed - Agent got blocked"
+                    ],
+                    [
+                        "RouteScenario_11_rep0",
+                        3,
+                        "Failed - Agent deviated from the route"
+                    ],
+                    [
+                        "RouteScenario_12_rep0",
+                        4,
+                        "Failed - Agent deviated from the route"
+                    ]
+                ]
+            }
+        },
+        "progress": [
+            5,
+            5
+        ],
+        "records": [
+            {
+                "index": 0,
+                "route_id": "RouteScenario_8_rep0",
+                "status": "Failed - Agent timed out",
+                "num_infractions": 27,
+                "infractions": {
+                    "collisions_layout": [
+                        "Agent collided against object with type=static.prop.trafficwarning and id=74372 at (x=-3811.336, y=-322.472, z=313.134)"
+                    ],
+                    "collisions_pedestrian": [],
+                    "collisions_vehicle": [
+                        "Agent collided against object with type=vehicle.dodge.charger_police_2020 and id=74360 at (x=-3564.48, y=102.614, z=321.465)",
+                        "Agent collided against object with type=vehicle.bh.crossbike and id=74369 at (x=-3506.133, y=-92.899, z=311.886)",
+                        "Agent collided against object with type=vehicle.dodge.charger_police_2020 and id=74382 at (x=-4180.48, y=-189.625, z=330.417)",
+                        "Agent collided against object with type=vehicle.nissan.patrol_2021 and id=74386 at (x=-4390.723, y=-99.73, z=332.002)",
+                        "Agent collided against object with type=vehicle.nissan.patrol_2021 and id=74386 at (x=-4395.156, y=-96.734, z=331.866)",
+                        "Agent collided against object with type=vehicle.mercedes.coupe_2020 and id=74388 at (x=-4697.4, y=68.347, z=316.981)",
+                        "Agent collided against object with type=vehicle.mercedes.coupe_2020 and id=74390 at (x=-4987.057, y=275.152, z=302.539)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5172.856, y=481.255, z=302.379)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5180.944, y=497.847, z=302.755)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5185.014, y=506.912, z=302.964)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5188.928, y=516.074, z=303.194)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5192.713, y=525.472, z=303.449)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5196.219, y=534.724, z=303.713)",
+                        "Agent collided against object with type=vehicle.gazelle.omafiets and id=74391 at (x=-5199.517, y=543.986, z=303.989)",
+                        "Agent collided against object with type=vehicle.dodge.charger_police_2020 and id=74394 at (x=-5212.574, y=817.352, z=313.637)"
+                    ],
+                    "red_light": [],
+                    "stop_infraction": [
+                        "Agent ran a stop with id=70880 at (x=-3430.369, y=691.737, z=331.889)"
+                    ],
+                    "outside_route_lanes": [],
+                    "min_speed_infractions": [
+                        "Average speed is 58.25% of the surrounding traffic's one",
+                        "Average speed is 98.35% of the surrounding traffic's one",
+                        "Average speed is 74.08% of the surrounding traffic's one"
+                    ],
+                    "yield_emergency_vehicles_infractions": [],
+                    "scenario_timeouts": [
+                        "Agent timed out a scenario",
+                        "Agent timed out a scenario",
+                        "Agent timed out a scenario",
+                        "Agent timed out a scenario",
+                        "Agent timed out a scenario",
+                        "Agent timed out a scenario"
+                    ],
+                    "route_dev": [],
+                    "vehicle_blocked": [],
+                    "route_timeout": [
+                        "Route timeout."
+                    ]
+                },
+                "scores": {
+                    "score_route": 76.3,
+                    "score_penalty": 2.3e-05,
+                    "score_composed": 0.001762
+                },
+                "meta": {
+                    "route_length": 4744.127,
+                    "duration_game": 1939.9,
+                    "duration_system": 3471.349
+                }
+            },
+            {
+                "index": 1,
+                "route_id": "RouteScenario_9_rep0",
+                "status": "Failed - Agent deviated from the route",
+                "num_infractions": 4,
+                "infractions": {
+                    "collisions_layout": [],
+                    "collisions_pedestrian": [],
+                    "collisions_vehicle": [
+                        "Agent collided against object with type=vehicle.mercedes.coupe_2020 and id=78519 at (x=1642.339, y=4460.296, z=364.814)",
+                        "Agent collided against object with type=vehicle.lincoln.mkz_2020 and id=78816 at (x=1271.098, y=4222.94, z=363.852)"
+                    ],
+                    "red_light": [],
+                    "stop_infraction": [],
+                    "outside_route_lanes": [],
+                    "min_speed_infractions": [],
+                    "yield_emergency_vehicles_infractions": [],
+                    "scenario_timeouts": [
+                        "Agent timed out a scenario"
+                    ],
+                    "route_dev": [
+                        "Agent deviated from the route at (x=1265.208, y=4246.142, z=364.112)"
+                    ],
+                    "vehicle_blocked": [],
+                    "route_timeout": []
+                },
+                "scores": {
+                    "score_route": 78.18,
+                    "score_penalty": 0.252,
+                    "score_composed": 19.70136
+                },
+                "meta": {
+                    "route_length": 740.557,
+                    "duration_game": 321.45,
+                    "duration_system": 825.854
+                }
+            },
+            {
+                "index": 2,
+                "route_id": "RouteScenario_10_rep0",
+                "status": "Failed - Agent got blocked",
+                "num_infractions": 4,
+                "infractions": {
+                    "collisions_layout": [],
+                    "collisions_pedestrian": [],
+                    "collisions_vehicle": [
+                        "Agent collided against object with type=vehicle.mercedes.coupe_2020 and id=82496 at (x=3165.937, y=5057.704, z=367.702)",
+                        "Agent collided against object with type=vehicle.dodge.charger_2020 and id=82706 at (x=3172.731, y=4992.294, z=367.596)"
+                    ],
+                    "red_light": [],
+                    "stop_infraction": [],
+                    "outside_route_lanes": [
+                        "Agent went outside its route lanes for about 1.263 meters (1.8% of the completed route)"
+                    ],
+                    "min_speed_infractions": [],
+                    "yield_emergency_vehicles_infractions": [],
+                    "scenario_timeouts": [],
+                    "route_dev": [],
+                    "vehicle_blocked": [
+                        "Agent got blocked at (x=3172.877, y=4992.125, z=367.595)"
+                    ],
+                    "route_timeout": []
+                },
+                "scores": {
+                    "score_route": 12.65,
+                    "score_penalty": 0.353528,
+                    "score_composed": 4.472134
+                },
+                "meta": {
+                    "route_length": 555.439,
+                    "duration_game": 246.0,
+                    "duration_system": 381.972
+                }
+            },
+            {
+                "index": 3,
+                "route_id": "RouteScenario_11_rep0",
+                "status": "Failed - Agent deviated from the route",
+                "num_infractions": 4,
+                "infractions": {
+                    "collisions_layout": [],
+                    "collisions_pedestrian": [],
+                    "collisions_vehicle": [
+                        "Agent collided against object with type=vehicle.mercedes.coupe_2020 and id=86393 at (x=-286.656, y=4034.879, z=371.982)"
+                    ],
+                    "red_light": [],
+                    "stop_infraction": [
+                        "Agent ran a stop with id=82782 at (x=-281.267, y=3985.504, z=371.515)"
+                    ],
+                    "outside_route_lanes": [],
+                    "min_speed_infractions": [
+                        "Average speed is 92.51% of the surrounding traffic's one"
+                    ],
+                    "yield_emergency_vehicles_infractions": [],
+                    "scenario_timeouts": [],
+                    "route_dev": [
+                        "Agent deviated from the route at (x=-527.92, y=3978.526, z=370.626)"
+                    ],
+                    "vehicle_blocked": [],
+                    "route_timeout": []
+                },
+                "scores": {
+                    "score_route": 31.81,
+                    "score_penalty": 0.469214,
+                    "score_composed": 14.92571
+                },
+                "meta": {
+                    "route_length": 856.077,
+                    "duration_game": 71.65,
+                    "duration_system": 179.698
+                }
+            },
+            {
+                "index": 4,
+                "route_id": "RouteScenario_12_rep0",
+                "status": "Failed - Agent deviated from the route",
+                "num_infractions": 8,
+                "infractions": {
+                    "collisions_layout": [
+                        "Agent collided against object with type=static.prop.trafficwarning and id=90206 at (x=624.743, y=4733.354, z=369.715)"
+                    ],
+                    "collisions_pedestrian": [],
+                    "collisions_vehicle": [
+                        "Agent collided against object with type=vehicle.mercedes.coupe_2020 and id=90198 at (x=247.342, y=4670.548, z=371.091)",
+                        "Agent collided against object with type=vehicle.dodge.charger_police_2020 and id=90202 at (x=402.052, y=4733.425, z=370.367)"
+                    ],
+                    "red_light": [],
+                    "stop_infraction": [],
+                    "outside_route_lanes": [],
+                    "min_speed_infractions": [
+                        "Average speed is 19.9% of the surrounding traffic's one",
+                        "Average speed is 12.59% of the surrounding traffic's one"
+                    ],
+                    "yield_emergency_vehicles_infractions": [],
+                    "scenario_timeouts": [
+                        "Agent timed out a scenario",
+                        "Agent timed out a scenario"
+                    ],
+                    "route_dev": [
+                        "Agent deviated from the route at (x=752.717, y=4836.422, z=370.245)"
+                    ],
+                    "vehicle_blocked": [],
+                    "route_timeout": []
+                },
+                "scores": {
+                    "score_route": 78.36,
+                    "score_penalty": 0.064265,
+                    "score_composed": 5.035812
+                },
+                "meta": {
+                    "route_length": 882.799,
+                    "duration_game": 637.45,
+                    "duration_system": 1423.573
+                }
+            }
+        ]
+    },
+    "entry_status": "Finished",
+    "eligible": true,
+    "sensors": [
+        "carla_camera",
+        "carla_lidar",
+        "carla_radar",
+        "carla_gnss",
+        "carla_imu",
+        "carla_speedometer"
+    ],
+    "values": [
+        "8.827356",
+        "55.46",
+        "0.227806",
+        "0.0",
+        "4.204",
+        "0.382",
+        "0.0",
+        "0.382",
+        "0.001",
+        "0.573",
+        "0.191",
+        "0.191",
+        "0.0",
+        "1.72",
+        "1.147"
+    ],
+    "labels": [
+        "Avg. driving score",
+        "Avg. route completion",
+        "Avg. infraction penalty",
+        "Collisions with pedestrians",
+        "Collisions with vehicles",
+        "Collisions with layout",
+        "Red lights infractions",
+        "Stop sign infractions",
+        "Off-road infractions",
+        "Route deviations",
+        "Route timeouts",
+        "Agent blocked",
+        "Yield emergency vehicles infractions",
+        "Scenario timeouts",
+        "Min speed infractions"
+    ]
+}

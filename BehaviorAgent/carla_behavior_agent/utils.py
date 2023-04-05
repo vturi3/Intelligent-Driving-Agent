@@ -166,5 +166,5 @@ class Streamer():
         self.data[datatype]["frame_lock"].release()
 
 if __name__ == "__main__":
-    speed_plot = Plot("../../speed2.txt", "../../speedplot2.png")
+    speed_plot = Plot("./userCode/speed.txt", "./userCode/speedplot.png")
     speed_plot.plot()
