@@ -12,5 +12,4 @@ Scenario 3:
 - Non si sa per quale motivo l'auto gira al contrario rispetto all'indicazione del planner. (causa exception sim)
 
 Scenario 4:
-- Bisogna capire cosa è necessario fare nella intersezione (l'auto che la blocca dopo un po scompare).
-- Viene buttato sotto un ciclista (l'auto rimane bloccata a seguito di questa cosa)
+- Auto polizia ferma in mezzo alla strada causa
