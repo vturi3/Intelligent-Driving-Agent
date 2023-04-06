@@ -1,15 +1,15 @@
 #!/bin/bash
-export ROUTES=/workspace/team_code/routes_avddiem_exam.xml
+export ROUTES=/workspace/team_code/AVD_Project/BehaviorAgent/routes_avddiem_exam.xml
 export REPETITIONS=1
 export DEBUG_CHALLENGE=1
-export TEAM_AGENT=/workspace/team_code/carla_behavior_agent/basic_autonomous_agent.py
-export TEAM_CONFIG=/workspace/team_code/carla_behavior_agent/config_agent_basic.json
+export TEAM_AGENT=/workspace/team_code/AVD_Project/BehaviorAgent/carla_behavior_agent/basic_autonomous_agent.py
+export TEAM_CONFIG=/workspace/team_code/AVD_Project/BehaviorAgent/carla_behavior_agent/config_agent_basic.json
 export CHALLENGE_TRACK_CODENAME=SENSORS
-export CARLA_HOST=YOUR_IP
-export CARLA_PORT=YOUR_PORT
-export CARLA_TRAFFIC_MANAGER_PORT=YOUR_TM_PORT
-export CHECKPOINT_ENDPOINT=/workspace/team_code/results/simulation_results.json
-export DEBUG_CHECKPOINT_ENDPOINT=/workspace/team_code/results/live_results.txt
+export CARLA_HOST=0.0.0.0
+export CARLA_PORT=2000
+export CARLA_TRAFFIC_MANAGER_PORT=8000
+export CHECKPOINT_ENDPOINT=/workspace/team_code/AVD_Project/BehaviorAgent/results/simulation_results.json
+export DEBUG_CHECKPOINT_ENDPOINT=/workspace/team_code/AVD_Project/BehaviorAgent/results/live_results.txt
 export RESUME=0
 export TIMEOUT=60
 
