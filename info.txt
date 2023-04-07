@@ -6,9 +6,12 @@ continuano a muoversi, e inoltre rimane fermo con il brake a 0.5 .
 
 Scenario 1:
 - Bisogna superare i lavori in corso (l'auto li prende in pieno e si blocca)
+- a me (Camilla) mi trovo che prende in pieno i lavori e che andrebbero superati, però non si blocca subito dopo, bensì si blocca dopo diverso tempo, 
+durante il quale incontra anche un ciclista e lo mette sotto. La situazione in cui rimane bloccato è la medesima di sopra.
 
 Scenario 2:
 - L'auto fa una curva a cazzo e colpisce paletto (auto bloccata)
+-a me (Camilla) auto davanti inizialmente, poco dopo essere partita si ferma, quindi anche la nostra rimane bloccata, la linea di separazione della strada mi sembra continua quindi non puo essere superata. Dopo di che la macchina davanti riprende, e riprende anche la nostra, allo sto prima dell'incrocio non mi sembra si sia fermata per tre secondi, dopo di che nella curva fa cose strane, un po a destra un po a sinistra, quando prova a rigirare nel verso giusto sale sul marciapiede e finisce in un palo per cui la simulazione si blocca. (Ho fatto il video dello schermo.)
 
 Scenario 3:
 - Non si sa per quale motivo l'auto gira al contrario rispetto all'indicazione del planner. (causa exception sim)
