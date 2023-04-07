@@ -13,3 +13,34 @@ Scenario 3:
 
 Scenario 4:
 - Auto polizia ferma in mezzo alla strada causa
+
+Scenario 5:
+- Una macchina ci viene molto vicina nella curva ma in realtà non ci colpisce.
+- Non è segnata l'inserimento in una cruva, la macchina posteriore ci colpisce, noi entriamo senza controllare
+- HardBreak, riusciamo a gestirloo, ripartiamo troppo piano, ci colpisce vettura da dietro
+- HardBreak2, Tutto ok, la macchina dietro ci colpisce ancora i questo caso fortinissimo e ci cappotta ma continuiamo.
+- si bloccano auto avanti, rallentiamo molto ma riusciamo a passare, c'è veicolo ferm in mezzo alla strada e non riusciamo a superarlo :(
+
+Scenario 6 (molto tosta come simulazione):
+- Scenario del parching exit, tamponiamo l'auto avanti a noi che dopo un po spostiamo ed andiamo avanti.
+- Intersezione segnata, ma non ci fermiamo, andiamo avanti e colpiamo il vehicle, dopo si sposta e continuaamo
+- l'auto ralletna sotto l'albero causa ciclista (quindi forse lo vede boh), lo dovremmo superare. Viene comunque segnato come punto di "hazard" quindi probabilmente dobbiamo fare questo soprasso azzardato! Qua la simulazione si blocca xke il ciclista sembra non muoversi nell'intersezione e dovevamo superarlo prima :(
+
+Scenario 7:
+- Di nuovo parching exit. 
+- Non ho capito cosa è successo (stavo risp su whatsapp) la macchina si è spostata nell'altra corsia wtf! Cmq collidiamo e rimaniamo fermi con altra vettura.
+
+Scenario 8:
+- ancora parking exit, colpiamo auto polizia e quella diffronte ma riusciamo a passare.
+- Bello l'inserimento in intersezione.
+- Frenata dura, tutot ok, c'è da controllare cmq sempre i vehicle dietro che spesso si tamponano ma non in questo caso.
+- Completamente missata la svolta a sinistra (va in Exception)
+
+Scenario 9:
+- Ancora parking exit, collissione con vehicle diffronte.
+- SI sposta aggressivo su corsia di destra xke cosi dice path.
+- Incidente, dovremmo superare a sinistra ma non ci riusciamo, colpiamo auto polizia non so perchè. Si blocca cosi
+
+Pensieri in generale:
+Forse dovremmo diminuire un po il minimo di distanza da mantenere con auto diffronte
+Per uscire dal parcheggio, al di la se può o meno, spesso colpisce auto diffronte, forse legato a controllore nn troppo frote su sterzo ?? In generale non seguie perfettamente la linea 
