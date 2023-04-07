@@ -1,6 +1,8 @@
 Scenario 0:
 - Bisogna capire cosa è necessario fare nella intersezione (l'auto che la blocca dopo un po scompare).
-- Viene buttato sotto un ciclista (l'auto rimane bloccata a seguito di questa cosa), forse ne vengono buttati sotto due (non so se è sempre lo stesso). Quando poi a seguito di questo evento l'auto si ferma è strano perche rimane fermo anche il ciclista avanti all'auto, mentre sull'altra corsia le macchine continuano a muoversi, e inoltre rimane fermo con il brake a 0.5 .
+- Viene buttato sotto un ciclista (l'auto rimane bloccata a seguito di questa cosa), forse ne vengono buttati sotto due (non so se è sempre lo stesso). 
+Quando poi a seguito di questo evento l'auto si ferma è strano perche rimane fermo anche il ciclista avanti all'auto, mentre sull'altra corsia le macchine 
+continuano a muoversi, e inoltre rimane fermo con il brake a 0.5 .
 
 Scenario 1:
 - Bisogna superare i lavori in corso (l'auto li prende in pieno e si blocca)
