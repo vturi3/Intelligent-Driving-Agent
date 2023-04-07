@@ -14,7 +14,11 @@ Scenario 2:
 -a me (Camilla) auto davanti inizialmente, poco dopo essere partita si ferma, quindi anche la nostra rimane bloccata, la linea di separazione della strada mi sembra
 continua quindi non puo essere superata. Dopo di che la macchina davanti riprende, e riprende anche la nostra, allo sto prima dell'incrocio non mi sembra si sia
 fermata per tre secondi, dopo di che nella curva fa cose strane, un po a destra un po a sinistra, quando prova a rigirare nel verso giusto sale sul marciapiede
-finisce in un palo per cui la simulazione si blocca. (Ho fatto il video dello schermo.)
+finisce in un palo per cui la simulazione si blocca. (Ho fatto il video dello schermo fino al punto in cui si incastra nel palo.) 
+Dopo forse riesce a uscirsene da dentro al palo con sterzata e accelerazine, urta contro l'altro palo ma piu o meno riprende la traiettoria (ho fatto la rec anche
+della parte successiva), macchina davanti ferma, riprendono a camminare, semaforo verde passa, fino alla curva procede senza problemi, curva ok, dopo curva macchina
+davanti si blocca e cosi anche noi. Poi la traversata riprende, arriva ad una nuova curva ma la prende al contrario, cioè gira nel verso opposto ai punti che tiene
+segnati per cui dopo un po si blocca, in quanto finisce la simulazione.
 
 Scenario 3:
 - Non si sa per quale motivo l'auto gira al contrario rispetto all'indicazione del planner. (causa exception sim)
