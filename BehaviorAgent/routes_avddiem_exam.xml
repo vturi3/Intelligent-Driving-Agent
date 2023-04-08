@@ -484,9 +484,9 @@
 	 <scenario name="BlockedIntersection_5" type="BlockedIntersection">
 		<trigger_point x="-3460.7" y="1833.2" z="346.8" yaw="329.0"/>
 	 </scenario>
-  </scenarios>
-</route>
-   <route id="2" town="Town12">
+   </scenarios>
+   </route>
+<route id="2" town="Town12">
       <!-- Urban route focused on high density areas with obstacle -->
       <weathers>
          <weather route_percentage="0"
@@ -665,7 +665,7 @@
          </scenario>
       </scenarios>
    </route>
-   <route id="3" town="Town12">
+<route id="3" town="Town12">
       <!-- Urban route focused on high density areas with ostacle -->
       <weathers>
          <weather route_percentage="0"
@@ -773,7 +773,7 @@
          </scenario>
       </scenarios>
    </route>
-   <route id="4" town="Town12">
+<route id="4" town="Town12">
       <!-- Rural route focused on crossing actors -->
       <weathers>
          <weather route_percentage="0"
