@@ -280,8 +280,6 @@ class BehaviorAgent(BasicAgent):
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.traffic_light_manager():
             return self.emergency_stop()
-        print(self._incoming_waypoint.is_junction, self._incoming_waypoint)
-        print('is juction?')
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.stop_sign_manager():
             return self.emergency_stop()
@@ -318,12 +316,7 @@ class BehaviorAgent(BasicAgent):
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-
-            isCollision = self.predict_collision_in_point(self._incoming_waypoint)
-            if isCollision:
-                target_speed=0
-            else:
-                target_speed = min([
+            target_speed = min([
                     self._behavior.max_speed,
                     self._speed_limit - 5])
             self._local_planner.set_speed(target_speed)
