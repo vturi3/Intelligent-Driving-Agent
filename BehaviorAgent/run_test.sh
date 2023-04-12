@@ -1,5 +1,5 @@
 #!/bin/bash
-export ROUTES=/workspace/team_code/AVD_Project/BehaviorAgent/routes_avddiem_exam.xml
+export ROUTES=/workspace/team_code/AVD_Project/BehaviorAgent/routes_avddiem_exam_extra.xml
 export REPETITIONS=1
 export DEBUG_CHALLENGE=1
 export TEAM_AGENT=/workspace/team_code/AVD_Project/BehaviorAgent/carla_behavior_agent/basic_autonomous_agent.py

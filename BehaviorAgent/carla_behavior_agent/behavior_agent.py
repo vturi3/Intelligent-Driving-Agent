@@ -90,6 +90,16 @@ class BehaviorAgent(BasicAgent):
         affected, _ = self._affected_by_traffic_light(lights_list)
 
         return affected
+    
+    def stop_sign_manager(self):
+        """
+        This method is in charge of behaviors for red lights.
+        Prende info su tutti gli attori e li filtra con traffic_light e valuta quali tra questi semafori influenza la guida.
+        """
+        actor_list = self._world.get_actors()
+        stop_list = actor_list.filter("*stop*")
+        affected, _ = self._affected_by_stop_sign(stop_list)
+        return affected
 
     def _tailgating(self, waypoint, vehicle_list):
         """
@@ -251,9 +261,6 @@ class BehaviorAgent(BasicAgent):
         come una macchina a stati ( anche se è molto complesso). Di base gestisce in un certo ordine tute le cose viste
         nella descrizione. 
 
-
-
-
         Execute one step of navigation.
 
             :param debug: boolean for debugging
@@ -272,6 +279,11 @@ class BehaviorAgent(BasicAgent):
 
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.traffic_light_manager():
+            return self.emergency_stop()
+        print(self._incoming_waypoint.is_junction, self._incoming_waypoint)
+        print('is juction?')
+        # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
+        if self.stop_sign_manager():
             return self.emergency_stop()
 
         # 2.1: Pedestrian avoidance behaviors, verifico se ci sono pedoni che possono influenzare la guida
@@ -306,9 +318,14 @@ class BehaviorAgent(BasicAgent):
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - 5])
+
+            isCollision = self.predict_collision_in_point(self._incoming_waypoint)
+            if isCollision:
+                target_speed=0
+            else:
+                target_speed = min([
+                    self._behavior.max_speed,
+                    self._speed_limit - 5])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 

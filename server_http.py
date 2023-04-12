@@ -170,7 +170,6 @@ def index():
     return "<html>" \
            "<head>"+ajaxClient()+"</head>" \
                 "<body>" \
-                    "<h1>Carla Simulator</h1>" \
                     "<img src='/rgbimage' style='width: 90%; height: 80%;'/>" \
                     "<h2 id='controls'>CONTROLS : ? ? ?</h1><br>" \
                     "<footer>SimpleVisualizer</footer>" \
