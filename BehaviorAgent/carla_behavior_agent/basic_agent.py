@@ -12,6 +12,7 @@ It can also make use of the global route planner to follow a specifed route
 import carla
 from shapely.geometry import Polygon
 
+from misc import draw_waypoints
 from local_planner import LocalPlanner, RoadOption
 from global_route_planner import GlobalRoutePlanner
 from misc import (get_speed, is_within_distance,
@@ -489,6 +490,7 @@ class BasicAgent(object):
 
             # Waypoints aren't reliable, check the proximity of the vehicle to the route, in questo caso sono in un incrocio. Segue una logica che dipende dalla traiettoria, viene costrituito in poligono sulla nostra traiettoria. Viene valutato dove ci trovamo, quanto siamo grandi (laterali), per ogni punto del plan valuto se la distanza nostra dal punto del plan è troppo lontana non mi interessa ( prendo solo punti plan vicini ). In quel punto del plan ci passo, voglio sapere li il mio "poligono". Alla fine costruisco nei waypoint i poligono su tutti i punti del plan, cosi ho un poligono della nstra traiettoria (l'abbiamo visto a lezione).
             else:
+                print("sono in juction e stoverificando se ci sarà una collisiozne")
                 route_bb = []
                 ego_location = ego_transform.location
                 extent_y = self._vehicle.bounding_box.extent.y
@@ -528,6 +530,8 @@ class BasicAgent(object):
                     target_polygon = Polygon(target_list)
 
                     if ego_polygon.intersects(target_polygon):
+                        print("potemmo fare un incidente")
+                        #draw_waypoints(self._vehicle.get_world(), [ego_polygon.exterior.coords], 1.0)
                         return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
 
                 return (False, None, -1)

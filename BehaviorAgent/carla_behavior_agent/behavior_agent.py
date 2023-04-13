@@ -161,7 +161,7 @@ class BehaviorAgent(BasicAgent):
         else:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=30)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=50,low_angle_th=-50)
             # tiene in considerazione anche
             # Check for tailgating
             if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
@@ -198,7 +198,7 @@ class BehaviorAgent(BasicAgent):
                 self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
             walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
-                self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+                self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60,low_angle_th=-60)
 
         return walker_state, walker, distance
 
@@ -276,8 +276,14 @@ class BehaviorAgent(BasicAgent):
 
         # 2.1: Pedestrian avoidance behaviors, verifico se ci sono pedoni che possono influenzare la guida
         walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
+        vehicle_state, vehicle, v_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
-        if walker_state:
+        if vehicle_state:
+            walkerCondition = w_distance < v_distance
+        else:
+            walkerCondition = True
+        if walker_state and walkerCondition:
+            print("sono in walker state, la distanza dal walker è di:", w_distance)
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
             distance = w_distance - max(
@@ -289,12 +295,13 @@ class BehaviorAgent(BasicAgent):
                 return self.emergency_stop()
 
         # 2.2: Car following behaviors
-        vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+        
         # stesso principio del pedone.
         if vehicle_state:
+            print("sono in vehicle state, la distanza dal vehicle è di:", v_distance)
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = distance - max(
+            distance = v_distance - max(
                 vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
                     self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
@@ -306,6 +313,7 @@ class BehaviorAgent(BasicAgent):
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+            print("sono in junction state")
             target_speed = min([
                 self._behavior.max_speed,
                 self._speed_limit - 5])
@@ -314,6 +322,7 @@ class BehaviorAgent(BasicAgent):
 
         # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
         else:
+            print("sono in normal behavior state")
             target_speed = min([
                 self._behavior.max_speed,
                 self._speed_limit - self._behavior.speed_lim_dist])
