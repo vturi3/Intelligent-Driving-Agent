@@ -55,7 +55,10 @@ def get_trafficlight_trigger_location(traffic_light):
     base_transform = traffic_light.get_transform()
     base_rot = base_transform.rotation.yaw
     area_loc = base_transform.transform(traffic_light.trigger_volume.location)
-    area_ext = traffic_light.trigger_volume.extent
+    try:
+        area_ext = traffic_light.trigger_volume.extent
+    except:
+        return carla.Location(0, 0, 0)
 
     point = rotate_point(carla.Vector3D(0, 0, area_ext.z), math.radians(base_rot))
     point_location = area_loc + carla.Location(x=point.x, y=point.y)

@@ -41,6 +41,8 @@ class BehaviorAgent(BasicAgent):
         super().__init__(vehicle, opt_dict=opt_dict, map_inst=map_inst, grp_inst=grp_inst)
         self._look_ahead_steps = 0
 
+        self._my_flag=False
+
         # Vehicle information
         self._speed = 0
         self._speed_limit = 0
@@ -109,6 +111,7 @@ class BehaviorAgent(BasicAgent):
             :param waypoint: current waypoint of the agent
             :param vehicle_list: list of all the nearby vehicles
         """
+        print("sono in logica x tailgating")
         # LaneChanginng, cerca di tenere in considerazione i vehicle che vengono da dietro.
         #anche in questo caso cambiano sempre gli angoli di considerazione.
         left_turn = waypoint.left_lane_marking.lane_change
@@ -122,7 +125,8 @@ class BehaviorAgent(BasicAgent):
             self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, low_angle_th=160)
         if behind_vehicle_state and self._speed < get_speed(behind_vehicle):
             if (right_turn == carla.LaneChange.Right or right_turn ==
-                    carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
+                    carla.LaneChange.Both)  and right_wpt.lane_type == carla.LaneType.Driving:
+                # and waypoint.lane_id * right_wpt.lane_id > 0
                 # Verifico anche dopo se sto x fare danni. Questo ci dice, se nn sopr vehicle e enlla traiettoria nn ho vehicle su cui impatto, se questo nn ci sta faccio manovra cambiando il path.
                 new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=1)
@@ -133,7 +137,8 @@ class BehaviorAgent(BasicAgent):
                     self.set_destination(end_waypoint.transform.location,
                                          right_wpt.transform.location)
                     # consente di calcolare percorso da dove ci troviamo a dove voglaimo andare e viene dato al local planner, viene calcoalto dal mission planner, modifica della traiettoria originale.
-            elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
+            elif left_turn == carla.LaneChange.Left  and left_wpt.lane_type == carla.LaneType.Driving:
+                # and waypoint.lane_id * left_wpt.lane_id > 0
                 new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=-1)
                 if not new_vehicle_state:
@@ -255,6 +260,21 @@ class BehaviorAgent(BasicAgent):
 
         return control
 
+    def help_sorpassing(self,waypoint,direction):
+
+        if direction =='left':
+            left_wpt = waypoint.get_left_lane()
+            print(left_wpt)
+            print(waypoint)
+            end_waypoint = self._local_planner.target_waypoint
+            self.set_destination(end_waypoint.transform.location,
+                                         left_wpt.transform.location)
+        else:
+            right_wpt = waypoint.get_right_lane()
+            end_waypoint = self._local_planner.target_waypoint
+            self.set_destination(end_waypoint.transform.location,
+                                         right_wpt.transform.location)
+
     def run_step(self, debug=False):
         """
         è il metodo che viene chiamato ad ogni tiemstep.  Prendo info ed eseguo il behavior planner, che può essere rappresentaot
@@ -267,8 +287,9 @@ class BehaviorAgent(BasicAgent):
             :return control: carla.VehicleControl        
         """
 
-        
         self._update_information()
+        if self._my_flag:
+            input()
 
         control = None
         if self._behavior.tailgate_counter > 0:
@@ -295,8 +316,61 @@ class BehaviorAgent(BasicAgent):
                     self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
 
             # Emergency brake if the car is very close.
-            if distance < self._behavior.braking_distance:
+            if distance < self._behavior.braking_distance and self._surpassing_police == False and self._surpassing_biker == False:
+                print("found pedone")
                 return self.emergency_stop()
+        
+        police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
+        def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
+        police_list = [w for w in police if dist(w) < 30]
+
+        if police_list:
+            vehicle_speed = get_speed(police_list[0])
+            print(vehicle_speed)
+            print("find auto police")
+            if vehicle_speed == 0.0:
+                #self._my_flag = True
+                self._surpassing_police = True
+                #self.help_sorpassing(ego_vehicle_wp,'left')
+                self.lane_change('left')
+                # self._local_planner.set_speed(15) # da cambiare
+                self._local_planner.set_speed(30) # da cambiare
+                print('neeed to taigating')
+                return self._local_planner.run_step(debug=debug)
+        else:
+            if self._surpassing_police: #check altre auto ferme
+                #self.help_sorpassing(ego_vehicle_wp,'right')
+                #self.lane_change('right')
+                print('torno a right')
+                self._surpassing_police = False
+                return self._local_planner.run_step(debug=debug)
+
+        bikers = self._world.get_actors().filter("*vehicle.bh.crossbike*")
+        def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
+        bikers_list = [w for w in bikers if dist(w) < 35]
+        print(bikers_list)
+        
+        if bikers_list:
+            vehicle_speed = get_speed(bikers_list[0])
+            print(vehicle_speed)
+            print("find ciclista")
+            if vehicle_speed <= 50:
+                #self._my_flag = True
+                self._surpassing_biker = True
+                #self.help_sorpassing(ego_vehicle_wp,'left')
+                self.lane_change('left')
+                print('torno a right')
+                self._local_planner.set_speed(30) # da cambiare
+                print('neeed to taigating')
+                return self._local_planner.run_step(debug=debug)
+        else:
+            if self._surpassing_biker: #check altre auto ferme
+                #self.help_sorpassing(ego_vehicle_wp,'right')
+                #self.lane_change('right')
+                print('torno a right')
+                self._surpassing_biker = False
+                return self._local_planner.run_step(debug=debug)
+
 
         # 2.2: Car following behaviors
         vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
@@ -310,6 +384,7 @@ class BehaviorAgent(BasicAgent):
 
             # Emergency brake if the car is very close.
             if distance < self._behavior.braking_distance:
+                print("found auto")
                 return self.emergency_stop()
             else:
                 control = self.car_following_manager(vehicle, distance)
@@ -329,6 +404,8 @@ class BehaviorAgent(BasicAgent):
                 self._speed_limit - self._behavior.speed_lim_dist])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
+
+        print(self._local_planner._target_speed)
 
         return control
 

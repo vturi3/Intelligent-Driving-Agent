@@ -172,7 +172,6 @@ def index():
                 "<body>" \
                     "<img src='/rgbimage' style='width: 90%; height: 80%;'/>" \
                     "<h2 id='controls'>CONTROLS : ? ? ?</h1><br>" \
-                    "<footer>SimpleVisualizer</footer>" \
                 "</body>" \
            "</html>"
 

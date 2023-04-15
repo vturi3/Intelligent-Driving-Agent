@@ -52,6 +52,10 @@ class BasicAgent(object):
         self._last_traffic_light = None
         self._last_time_stop_sign = None
 
+        self._surpassing_police = False
+        self._surpassing_biker = False
+        self._surpassing_obstacle = False
+
         # Base parameters
         self._ignore_traffic_lights = False
         self._ignore_stop_signs = False
@@ -246,6 +250,7 @@ class BasicAgent(object):
         Use 'direction' to specify either a 'left' or 'right' lane change,
         and the other 3 fine tune the maneuver
         """
+        print("lane change" , direction)
         speed = self._vehicle.get_velocity().length()
         path = self._generate_lane_change_path(
             self._map.get_waypoint(self._vehicle.get_location()),
@@ -259,8 +264,9 @@ class BasicAgent(object):
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")
+        self._lane_changed = direction
 
-        self.set_global_plan(path)
+        self.set_global_plan(path,clean_queue=False)
 
     def _affected_by_traffic_light(self, lights_list=None, max_distance=None):
         """
@@ -376,8 +382,6 @@ class BasicAgent(object):
 
         return (False, None)
     
-
-
     def _vehicle_obstacle_detected_old(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
         """
         Method to check if there is a vehicle in front of the agent blocking its path.
