@@ -161,7 +161,7 @@ class BehaviorAgent(BasicAgent):
         else:
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=30)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
             # tiene in considerazione anche
             # Check for tailgating
             if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
@@ -273,17 +273,16 @@ class BehaviorAgent(BasicAgent):
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.traffic_light_manager():
             return self.emergency_stop()
-
         # 2.1: Pedestrian avoidance behaviors, verifico se ci sono pedoni che possono influenzare la guida
         walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
         if walker_state:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = w_distance - max(
-                walker.bounding_box.extent.y, walker.bounding_box.extent.x) - max(
-                    self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-
+            distance = w_distance - np.sqrt(np.square(walker.bounding_box.extent.y/2) + np.square(walker.bounding_box.extent.x/2)) - np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
+            print("WALKER STATE la distanza dal pedone è: ", distance)
+            if distance < 0:
+                distance = 0.5
             # Emergency brake if the car is very close.
             if distance < self._behavior.braking_distance:
                 return self.emergency_stop()
@@ -294,18 +293,21 @@ class BehaviorAgent(BasicAgent):
         if vehicle_state:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = distance - max(
-                vehicle.bounding_box.extent.y, vehicle.bounding_box.extent.x) - max(
-                    self._vehicle.bounding_box.extent.y, self._vehicle.bounding_box.extent.x)
-
+            distance = distance - np.sqrt(np.square(vehicle.bounding_box.extent.y/2) +  np.square(vehicle.bounding_box.extent.x)) - np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
+            if distance < 0:
+                distance = 0.5
+            print("VEHICLE STATE la distanza dal veicolo è: ", distance)
             # Emergency brake if the car is very close.
             if distance < self._behavior.braking_distance:
+                return self.controlled_stop(vehicle, distance)
+            elif distance < self._behavior.braking_distance/4:
                 return self.emergency_stop()
             else:
                 control = self.car_following_manager(vehicle, distance)
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+            print("JUNCTION STATE")
             target_speed = min([
                 self._behavior.max_speed,
                 self._speed_limit - 5])
@@ -314,6 +316,7 @@ class BehaviorAgent(BasicAgent):
 
         # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
         else:
+            print("NORMAL BEHAVIOUR")
             target_speed = min([
                 self._behavior.max_speed,
                 self._speed_limit - self._behavior.speed_lim_dist])
@@ -333,5 +336,24 @@ class BehaviorAgent(BasicAgent):
         control.throttle = 0.0
         control.brake = self._max_brake
         control.hand_brake = False 
+        # per le derapate a True
+        return control
+
+    def controlled_stop(self, vehicle, distance):
+        vehicle_speed = get_speed(vehicle)
+        delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
+        ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
+        control = self.emergency_stop()
+        # Under safety time distance, slow down.
+        if ttc > 0.0:
+            target_speed = (ttc/self._behavior.safety_time) * self._speed
+            print("devo rallentare, velocità: ", target_speed)
+            self._local_planner.set_speed(target_speed)
+            control = self._local_planner.run_step()
+        if self._speed < 5 and distance > 2:
+            target_speed = distance * 2
+            print("devo rallentare, velocità: ", target_speed)
+            self._local_planner.set_speed(target_speed)
+            control = self._local_planner.run_step()
         # per le derapate a True
         return control

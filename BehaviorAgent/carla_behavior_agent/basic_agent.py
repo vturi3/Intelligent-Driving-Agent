@@ -437,7 +437,7 @@ class BasicAgent(object):
             return (False, None, -1)
 
         if not vehicle_list:
-            vehicle_list = self._world.get_actors().filter("*vehicle*")
+            return (False, None, -1)
 
         if not max_distance:
             max_distance = self._base_vehicle_threshold
@@ -466,7 +466,6 @@ class BasicAgent(object):
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
             # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
             if not ego_wpt.is_junction or not target_wpt.is_junction:
-
                 if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id  + lane_offset:
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
                     next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
