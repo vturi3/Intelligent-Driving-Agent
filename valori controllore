@@ -1,0 +1,17 @@
+
+
+1° caso
+
+"longitudinal_control_dict" : {"K_P": 0.15, "K_I": 0.07, "K_D": 0.05, "dt": 0.08},
+    "lateral_control_dict_stanley" : {"K_V": 0.1, "K_S": 1.4, "dt": 0.1},
+    "lateral_control_dict" : {"K_P": 0.58, "K_I": 0.5, "K_D": 0.02, "dt": 0.04},
+    "target_speed": 15.0,
+
+2° caso
+
+"longitudinal_control_dict" : {"K_P": 0.37, "K_I": 0.032, "K_D": 0.024, "dt": 0.05},
+    "lateral_control_dict_stanley" : {"K_V": 0.1, "K_S": 1.4, "dt": 0.1},
+    "lateral_control_dict" : {"K_P": 0.45, "K_I": 0.4, "K_D": 0.001, "dt": 0.06},
+    "target_speed": 40.0, 45.0 OK, 50.0 OK da migliorare, 35.0 OK, 30.0 OK, 25.0 OK
+
+
