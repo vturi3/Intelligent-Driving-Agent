@@ -14,6 +14,7 @@ from shapely.geometry import Polygon
 
 from local_planner import LocalPlanner, RoadOption
 from global_route_planner import GlobalRoutePlanner
+from datetime import datetime,timedelta
 from misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
@@ -49,6 +50,11 @@ class BasicAgent(object):
         else:
             self._map = self._world.get_map()
         self._last_traffic_light = None
+        self._last_time_stop_sign = None
+
+        self._surpassing_police = False
+        self._surpassing_biker = False
+        self._surpassing_obstacle = False
 
         # Base parameters
         self._ignore_traffic_lights = False
@@ -58,6 +64,7 @@ class BasicAgent(object):
         self._target_speed = 5.0
         self._sampling_resolution = 2.0
         self._base_tlight_threshold = 5.0  # meters
+        self._base_stop_threshold = 3.0  # meters
         self._base_vehicle_threshold = 5.0  # meters
         self._speed_ratio = 1
         self._max_brake = 0.5
@@ -101,6 +108,7 @@ class BasicAgent(object):
         # Get the static elements of the scene
         self._lights_list = self._world.get_actors().filter("*traffic_light*")
         self._lights_map = {}  # Dictionary mapping a traffic light to a wp corrspoing to its trigger volume location
+        self._stop_map = {}  # Dictionary mapping a stop sign to a wp corrspoing to its trigger volume location
 
     def add_emergency_stop(self, control):
         """
@@ -242,6 +250,7 @@ class BasicAgent(object):
         Use 'direction' to specify either a 'left' or 'right' lane change,
         and the other 3 fine tune the maneuver
         """
+        print("lane change" , direction)
         speed = self._vehicle.get_velocity().length()
         path = self._generate_lane_change_path(
             self._map.get_waypoint(self._vehicle.get_location()),
@@ -255,8 +264,9 @@ class BasicAgent(object):
         )
         if not path:
             print("WARNING: Ignoring the lane change as no path was found")
+        self._lane_changed = direction
 
-        self.set_global_plan(path)
+        self.set_global_plan(path,clean_queue=False)
 
     def _affected_by_traffic_light(self, lights_list=None, max_distance=None):
         """
@@ -315,7 +325,63 @@ class BasicAgent(object):
                 return (True, traffic_light)
 
         return (False, None)
+    
+    def _affected_by_stop_sign(self, stop_list=None, max_distance=None):
+        """
+        
+        """
+        if self._ignore_traffic_lights:
+            return (False, None)
 
+        if not stop_list:
+            stop_list = self._world.get_actors().filter("*stop*")
+
+        if not max_distance:
+            max_distance = self._base_stop_threshold
+        # qua verifico se mi sono gia fermato allo step precedete.
+        if self._last_time_stop_sign:
+            # qua devo verificare se posso andare avanti ritornando quindi un vuoto o eventualmente un altro !
+
+            if self._world.get_snapshot().timestamp.elapsed_seconds - self._last_time_stop_sign >= 3:
+                self._last_time_stop_sign = None
+            else: #se non sono passati 3 secondi
+                return (True, self._last_time_stop_sign)
+
+        #se arrivo qua significa che non ne avevo uno uno in precedenza, quindi ne devo cercare un altro massiccio
+
+        ego_vehicle_location = self._vehicle.get_location()
+        ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
+
+        for stop_sign in stop_list:
+            if stop_sign.id in self._stop_map:
+                trigger_wp = self._stop_map[stop_sign.id]
+            else:
+                trigger_location = get_trafficlight_trigger_location(stop_sign)
+                trigger_wp = self._map.get_waypoint(trigger_location)
+                self._stop_map[stop_sign.id] = trigger_wp
+
+            if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
+                continue
+            # Escludo stop di altre strade.
+            if trigger_wp.road_id != ego_vehicle_waypoint.road_id:
+                continue
+
+            print(trigger_wp.transform.location.distance(ego_vehicle_location))
+
+            # orientamento stop, cosi gestisco se si trova diffronte a me o no.
+            ve_dir = ego_vehicle_waypoint.transform.get_forward_vector()
+            wp_dir = trigger_wp.transform.get_forward_vector() 
+            dot_ve_wp = ve_dir.x * wp_dir.x + ve_dir.y * wp_dir.y + ve_dir.z * wp_dir.z
+
+            if dot_ve_wp < 0:
+                continue
+
+            if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
+                self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
+                return (True, stop_sign)
+
+        return (False, None)
+    
     def _vehicle_obstacle_detected_old(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
         """
         Method to check if there is a vehicle in front of the agent blocking its path.
