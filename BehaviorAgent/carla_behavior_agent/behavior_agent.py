@@ -87,6 +87,7 @@ class BehaviorAgent(BasicAgent):
         """
         actor_list = self._world.get_actors()
         lights_list = actor_list.filter("*traffic_light*")
+        #tale funzione si trova nel basic agent.
         affected, _ = self._affected_by_traffic_light(lights_list)
 
         return affected
@@ -99,21 +100,32 @@ class BehaviorAgent(BasicAgent):
             :param waypoint: current waypoint of the agent
             :param vehicle_list: list of all the nearby vehicles
         """
-        # LaneChanginng, cerca di tenere in considerazione i vehicle che vengono da dietro.
-        #anche in questo caso cambiano sempre gli angoli di considerazione.
+        #Tenta di gestire la possibilità di effettuare dei movimenti tipo cambi di corsia a destra o a sinistra e cerca di tenere in considerazione i veicoli che vengono da dietro
+        # Osservando il comportamento è chiaro che non funziona benissimo.
+        #le funzioni di base che vengono usate sono sempre le stesse, ovvero vehicle_obtacle_detected, pero con valori diversi degli angoli.
+        # LaneChanginng
+        # questo dovrebbe servire a capire se si puo girare a destra o a sinistra
         left_turn = waypoint.left_lane_marking.lane_change
         right_turn = waypoint.right_lane_marking.lane_change
 
+        # questo dovrebbe servire ad ottenere il corrispettivo waypoint pero nella lane adiacente, se ne esiste una, cioè l'obiettivo per la lane change, sarebbe
+        #poi muoversi su quel waypoint.
         left_wpt = waypoint.get_left_lane()
         right_wpt = waypoint.get_right_lane()
 
-        # se esiste veicolo che da fastidio e la velocita è minore del vehicle che da fastidio nn riesco a fare il cambio. In generale cambiano gli angoli che vengono passati alla funzione x la detection.
+        # se esiste veicolo che da fastidio quindi in possibile collisione sulla base delle intenzioni che abbiamo, quindi si stabiliscono degli angoli che definiscono il raggio di
+        # azione per cui se esiste questo veicolo che da fastidio e la nostra velocità è minore della velocità di questo veicolo che sta sopraggiungendo, quindi non riesco a fare il cambio
+        # In generale cambiano gli angoli che vengono passati alla funzione x la detection.
         behind_vehicle_state, behind_vehicle, _ = self._vehicle_obstacle_detected(vehicle_list, max(
             self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, low_angle_th=160)
         if behind_vehicle_state and self._speed < get_speed(behind_vehicle):
+            #si va a valutare se stiamo girando a destra o a sinistra
+            # questo quello che dovrebbe fare è verificare la possibilità di andare a destra o da entrambe le parti, considerare che la direzione dei waypoints sulle
+            # due lane adiacenti sia la medesima e vedere se è di tipo driving la lane che vorremmo invadere.
             if (right_turn == carla.LaneChange.Right or right_turn ==
                     carla.LaneChange.Both) and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
-                # Verifico anche dopo se sto x fare danni. Questo ci dice, se nn sopr vehicle e enlla traiettoria nn ho vehicle su cui impatto, se questo nn ci sta faccio manovra cambiando il path.
+                # Verifico anche dopo se sto x fare danni. 
+                # Questo ci dice, se nn sopraggiungono vehicle e enlla traiettoria nn ho vehicle su cui impatto, faccio manovra cambiando il path.
                 new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=1)
                 if not new_vehicle_state:
@@ -122,7 +134,8 @@ class BehaviorAgent(BasicAgent):
                     self._behavior.tailgate_counter = 200
                     self.set_destination(end_waypoint.transform.location,
                                          right_wpt.transform.location)
-                    # consente di calcolare percorso da dove ci troviamo a dove voglaimo andare e viene dato al local planner, viene calcoalto dal mission planner, modifica della traiettoria originale.
+                    # consente di calcolare percorso da dove ci troviamo a dove voglaimo andare e viene dato al local planner, viene calcoalto tramite il mission planner,
+                    # è come una modifica della traiettoria originale.
             elif left_turn == carla.LaneChange.Left and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
                 new_vehicle_state, _, _ = self._vehicle_obstacle_detected(vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=-1)
@@ -145,7 +158,7 @@ class BehaviorAgent(BasicAgent):
             :return distance: distance to nearby vehicle
         """
 
-        # logica è uguale a quella del pedone.
+        # logica è uguale a quella del pedone, quindi faccio un filtraggio sui veicoli e rispetto al punto in cui mi trovo. 
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         def dist(v): return v.get_location().distance(waypoint.transform.location)
         vehicle_list = [v for v in vehicle_list if dist(v) < 45 and v.id != self._vehicle.id]
@@ -162,7 +175,9 @@ class BehaviorAgent(BasicAgent):
             vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
                 vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=30)
-            # tiene in considerazione anche
+            # In questa situazione si tiene conto anche del tailgating, ovvero di fatto situazioni in cui non c'è stata detection di ostacolo o comunque non problematico, 
+            # La road option è di tipo LAENFOLLOW quindi sto andando in una corsia e dritto, quindi non devo fare per esempio cambi di corsia o devo girare e non sto in un'intersezione
+            # e la velocità è maggiore di una certa quantità e non sono gia in tailfating allora effettuo il tailgating che gestisce sostanzialmente l'immissione.
             # Check for tailgating
             if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
                     and not waypoint.is_junction and self._speed > 10 \
@@ -189,7 +204,11 @@ class BehaviorAgent(BasicAgent):
         def dist(w): return w.get_location().distance(waypoint.transform.location)
         walker_list = [w for w in walker_list if dist(w) < 10]
 
-        # vedo se siamo in collisione con pedone, magari distanza piccola però ci ha gia superato, a seconda delle posizioni e di cosa dobbiamo fare valutiamo in modo diverso la _vehicle_obstacle_detected (in realtà sarebbe obj), si può usare x qualsiasi cosa in carla, l'importante è passare la lista di obj in ingresso. verifico se sono in collisione con la lista di obj passati. Resistuisce se obj influenza la nostra guida, chi è e la distanza.
+        # bisogna capire ora che azione intraprendere, quindi come prima cosa bisogna capire se il nostro veicolo potrebbe essere in collisione con questo pedone,
+        # oer esempio il pedone potrebbe essere ad una distanza piccola da noi, ma potrebbe essere già andato oltre. Quindi a seconda delle cose diverse che dobbiamo andare
+        #a vedere valuteremo in modo diverso la funzione vehicle_obstacle_detected, che è una funzione che in realtà va bene per qualsiasi tipo di oggetto, non solo per i veicoli
+        # perchè noi in ingresso passiamo una lista di oggetti. I parametri passati riguardano la distanza massima da rispettare da questi oggetti, e poi ci sono questioni sull'orientamento
+        # La funzione restituisce se c'è un pedone che influenza la nostra guida e quindi si necessita di un emergency stop, chi è e a che distanza si trova. 
         if self._direction == RoadOption.CHANGELANELEFT:
             walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
                 self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
@@ -212,21 +231,29 @@ class BehaviorAgent(BasicAgent):
             :param debug: boolean for debugging
             :return control: carla.VehicleControl
         """
-        # sto in una situazione normale, nn ho vehicle che mi danno fastidio, pedoni o altro.. Seguo la macchina e basta. Prendo la velocita del vehicle, vedo la differenza di velocita, calcolo TimeToCollision. Il comportamento è quello di ridurre la velocità cosi da matchare la sua, viene fatto mano mano. Cambio quindi la nuova velocità obiettivo.
+
+        # sto in una situazione normale, nn ho vehicle che mi danno fastidio, pedoni o altro.. 
+        # Seguo la macchina e basta. Prendo la velocita del vehicle, vedo la differenza di velocita, calcolo TimeToCollision. 
+        # Il comportamento è quello di ridurre la velocità cosi da matchare la sua, viene fatto mano mano. Cambio quindi la nuova velocità obiettivo.
         vehicle_speed = get_speed(vehicle)
         delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
 
         # Under safety time distance, slow down.
+        #Se il tempo per impattare il veicolo è maggiore di zero ed è minore del tempo di safety che viene settato a seconda del behavior, quindi a quanto tempo voglio 
+        #considerare un veicolo. Quello che succede è andare ad effettuare un rallentamento, cioe si riduce la nostra velocità sulla base del veicolo che stiamo seguendo. 
         if self._behavior.safety_time > ttc > 0.0:
             target_speed = min([
                 positive(vehicle_speed - self._behavior.speed_decrease),
                 self._behavior.max_speed,
                 self._speed_limit - self._behavior.speed_lim_dist])
+            #comunichiamo al local planner quale è la nuova velocità obbiettivo e quindi il local planner attuerà il controllo sulla base di questa velocità
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
         # Actual safety distance area, try to follow the speed of the vehicle in front.
+        #Abbiamo un comportamento simile a quello precedente la riduzione dellla velocità è fatta in modo diverso, nel senso che qui non siamo cosi tanto vicini e quindi
+        #andiamo ad adattare la nostra velocità a quella del veicolo.
         elif 2 * self._behavior.safety_time > ttc >= self._behavior.safety_time:
             target_speed = min([
                 max(self._min_speed, vehicle_speed),
@@ -236,6 +263,7 @@ class BehaviorAgent(BasicAgent):
             control = self._local_planner.run_step(debug=debug)
 
         # Normal behavior.
+        # Se non vale nessuno dei comportamenti precedenti, allora continuiamo in una situazione di normal behavior, cioe seguiamo la velocità target che ci siamo dati.
         else:
             target_speed = min([
                 self._behavior.max_speed,
@@ -247,12 +275,9 @@ class BehaviorAgent(BasicAgent):
 
     def run_step(self, debug=False):
         """
-        è il metodo che viene chiamato ad ogni tiemstep.  Prendo info ed eseguo il behavior planner, che può essere rappresentaot
-        come una macchina a stati ( anche se è molto complesso). Di base gestisce in un certo ordine tute le cose viste
-        nella descrizione. 
-
-
-
+        è il metodo che viene chiamato ad ogni tiemstep. Possiamo immaginarlo come a dire prendo informazioni dall'ambiente ed eseguo il behavior planner, 
+        che può essere rappresentato come una macchina a stati (anche se è molto complesso in questo caso). Di base gestisce in un certo ordine tutte le cose viste
+        nella descrizione, ovvero auto, pedoni, semafori.
 
         Execute one step of navigation.
 
@@ -260,24 +285,34 @@ class BehaviorAgent(BasicAgent):
             :return control: carla.VehicleControl        
         """
 
-        
+        print("sono in run_step")
         self._update_information()
-
+        ego_wpt = self._map.get_waypoint(self._vehicle.get_location())
+        print(ego_wpt.lane_id)
         control = None
         if self._behavior.tailgate_counter > 0:
             self._behavior.tailgate_counter -= 1
 
+        #acquisice informazioni sul veicolo
         ego_vehicle_loc = self._vehicle.get_location()
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
 
-        # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
+        # 1: Red lights and stops behavior
+        # individua se esiste in un certo range intorno al proprio veicolo un semaforo e se questo semaforo è rosso. Quindi se è rosso si ferma e si salva che è in attesa di un semaforo
+        # quindi al prossimo step tale semaforo potrebbe diventare verde, quindi significa che questo controllo non deve farlo piu tra tutti i possibili semafori nell'intorno
+        # ma semplicemente su quello che mi ero salvato allo step precedente. Nel caso in cui ci sono semafori rossi per cui devo fermarmi, vado nello stato di emergency stop.
         if self.traffic_light_manager():
+            print("traffic_light")
             return self.emergency_stop()
 
-        # 2.1: Pedestrian avoidance behaviors, verifico se ci sono pedoni che possono influenzare la guida
+        # 2.1: Pedestrian avoidance behaviors
+        # pedestrian_avoid_manager va a valutare se ci sono dei pedoni nel mio raggio di azione che possono andare ad influenzare la mia guida
+        # per esempio se c'è un pedone che sta attraversando.
         walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
-        # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
+        # walker_state definisce appunto se esiste questo pedone che impatta con il mio veicolo. Se questo pedone esiste e si trova ad una distanza troppo vicina
+        # allora si va in emergency stop.
         if walker_state:
+            print("walker_state")
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
             distance = w_distance - max(
@@ -289,9 +324,14 @@ class BehaviorAgent(BasicAgent):
                 return self.emergency_stop()
 
         # 2.2: Car following behaviors
+        # Se non ci sono pedoni che impattano la mia guida si passa alla valutazione dei veicoli, cioè si valuta se esite una macchina che puo essere in collisione con 
+        # il nostro veicolo, cioè entro in certo range nella nostra traiettoria. Le cose che vengono fatte in questo caso specifico sono due, ovvero se è molto vicino
+        # allora quello che si fa è fermarsi, senon dovesse essere molto vicino si potrebbe valutare di seguirlo, per esempio un veicolo che sta davanti a noi nella stessa
+        # corsia.
         vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         # stesso principio del pedone.
         if vehicle_state:
+            print("vehicle_state")
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
             distance = distance - max(
@@ -304,16 +344,26 @@ class BehaviorAgent(BasicAgent):
             else:
                 control = self.car_following_manager(vehicle, distance)
 
-        # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
+        # 3: Intersection behavior
+        # questo codice in realtà è una fregatura perchè il comportamento descritto consente di capire se siamo ad un incrocio ma ciò che viene fatto
+        # non è diverso da normal behavior, quindi non c'è un modulo specifico per la gestione delle intersezioni che invece principalmente viene gestito 
+        # dal modulo di collision avoidance della macchina, quindi il modulo precednete in parte ingloba anche questa caratteristica.
+        # Stesso comportamento normal behavor ma solo più lento.
         elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+            print("intersection_behavior")
             target_speed = min([
                 self._behavior.max_speed,
                 self._speed_limit - 5])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
-        # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
+        # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. 
+        # qui viene chiamato il run step del local planner,
+        # che è una cosa che non c'era eni moduli precedenti, quindi stiamo adattando alla velocità del local planner che in questo setup contiene anche i controllori, 
+        # quindi stiamo passando queste info.
+        # L'oggetto control è quello che in carla contiene throttle brake e steer.
         else:
+            print("normal_behavior")
             target_speed = min([
                 self._behavior.max_speed,
                 self._speed_limit - self._behavior.speed_lim_dist])
@@ -329,6 +379,8 @@ class BehaviorAgent(BasicAgent):
 
             :param speed (carl.VehicleControl): control to be modified
         """
+        #rappresenta lo stato in cui si da la massima frenata e la massima accelerazione alla macchina.
+
         control = carla.VehicleControl()
         control.throttle = 0.0
         control.brake = self._max_brake
