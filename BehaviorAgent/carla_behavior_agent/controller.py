@@ -50,7 +50,7 @@ class VehicleController():
         self._world = self._vehicle.get_world()
         self.past_steering = self._vehicle.get_control().steer
         self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
-        self._lat_controller = StanleyLateralController(self._vehicle, offset, **args_lateral)
+        self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
 
 
     def run_step(self, target_speed, waypoint):
@@ -325,6 +325,7 @@ class PIDLateralController():
         self._k_p = K_P
         self._k_i = K_I
         self._k_d = K_D
+        self._wps = None
         self._dt = dt
         self._offset = offset
         self._e_buffer = deque(maxlen=10)
@@ -386,6 +387,17 @@ class PIDLateralController():
             _ie = 0.0
 
         return np.clip((self._k_p * _dot) + (self._k_d * _de) + (self._k_i * _ie), -1.0, 1.0)
+
+    def setWaypoints(self, wps):
+        """Sets trajectory to follow and filters spurious points"""
+        self._wps = [wps[0]]
+        for i in range(1, len(wps) - 1):
+            trj_heading_x = wps[i][0].transform.location.x - self._wps[-1][0].transform.location.x
+            trj_heading_y = wps[i][0].transform.location.y - self._wps[-1][0].transform.location.y
+            
+            dd = hypot(trj_heading_x, trj_heading_y)
+            if dd > 0:
+                self._wps.append(wps[i])
 
     def change_parameters(self, K_P, K_I, K_D, dt):
         """Changes the PID parameters"""
