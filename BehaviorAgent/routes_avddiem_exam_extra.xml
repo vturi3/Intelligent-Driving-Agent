@@ -11,8 +11,8 @@
       </weathers>
       <waypoints>
          <!-- <position x="-3211.5" y="632.8" z="326.4"/> -->
-         <position x="-3542.6" y="549.0" z="330.6"/>
-         <!-- <position x="-3604.1" y="252.4" z="328.1"/> test soprasso Auto -->
+         <!-- <position x="-3542.6" y="549.0" z="330.6"/> test soprasso Auto-->
+         <position x="-3604.1" y="252.4" z="328.1"/> 
          <!-- <position x="-3531.67" y="16.65" z="317.4"/> test soprasso bici -->
          <position x="-3513.6" y="-47.1" z="314.2"/>
          <position x="-4042.2" y="-239.9" z="324.1"/>

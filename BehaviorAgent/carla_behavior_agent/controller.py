@@ -9,7 +9,7 @@ from collections import deque
 import math
 import numpy as np
 import carla
-from misc import get_speed
+from misc import get_speed,draw_waypoints2
 import sys
 
 from math import atan2, atan, hypot
@@ -65,7 +65,7 @@ class VehicleController():
         """
 
         acceleration = self._lon_controller.run_step(target_speed)
-        current_steering = self._lat_controller.run_step()
+        current_steering = self._lat_controller.run_step(waypoint)
         control = carla.VehicleControl()
         if acceleration >= 0.0:
             control.throttle = min(acceleration, self.max_throt)
@@ -340,7 +340,11 @@ class PIDLateralController():
             -1 maximum steering to left
             +1 maximum steering to right
         """
-        return self._pid_control(waypoint, self._vehicle.get_transform())
+        if self._wps != None:
+            print('gli passo wps')
+            return self._pid_control(self._wps[0][0], self._vehicle.get_transform())
+        else:
+            return self._pid_control(waypoint, self._vehicle.get_transform())
 
     def _pid_control(self, waypoint, vehicle_transform):
         """
@@ -386,6 +390,8 @@ class PIDLateralController():
             _de = 0.0
             _ie = 0.0
 
+        self._wps = None
+
         return np.clip((self._k_p * _dot) + (self._k_d * _de) + (self._k_i * _ie), -1.0, 1.0)
 
     def setWaypoints(self, wps):
@@ -398,6 +404,8 @@ class PIDLateralController():
             dd = hypot(trj_heading_x, trj_heading_y)
             if dd > 0:
                 self._wps.append(wps[i])
+        
+        draw_waypoints2(self._vehicle.get_world(), self._wps, 1.0)
 
     def change_parameters(self, K_P, K_I, K_D, dt):
         """Changes the PID parameters"""

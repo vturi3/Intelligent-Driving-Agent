@@ -25,7 +25,23 @@ def draw_waypoints(world, waypoints, z=0.5):
         begin = wpt_t.location + carla.Location(z=z)
         angle = math.radians(wpt_t.rotation.yaw)
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-        world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=1.0)
+        world.debug.draw_arrow(begin, end, arrow_size=0.03, life_time=1.0)
+
+def draw_waypoints2(world, waypoints, z=0.5):
+    """
+    Draw a list of waypoints at a certain height given in z.
+
+        :param world: carla.world object
+        :param waypoints: list or iterable container with the waypoints to draw
+        :param z: height in meters
+    """
+    for i,wpt in enumerate(waypoints):
+        if i % 5 == 0 :
+            wpt_t = wpt[0].transform
+            begin = wpt_t.location + carla.Location(z=z)
+            angle = math.radians(wpt_t.rotation.yaw)
+            end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
+            world.debug.draw_arrow(begin, end, arrow_size=0.03, life_time=1.0)
 
 
 def get_speed(vehicle):

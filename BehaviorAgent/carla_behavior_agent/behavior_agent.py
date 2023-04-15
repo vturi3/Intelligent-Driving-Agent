@@ -322,21 +322,22 @@ class BehaviorAgent(BasicAgent):
         
         police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
-        police_list = [w for w in police if dist(w) < 30]
+        police_list = [w for w in police if dist(w) < 110]
 
         if police_list:
             vehicle_speed = get_speed(police_list[0])
+            vehicle_distance = dist(police_list[0])
             print(vehicle_speed)
-            print("find auto police")
-            if vehicle_speed == 0.0:
+            print("find auto police...rallento")
+            self._local_planner.set_speed(30) # da cambiare
+            if vehicle_speed == 0.0 and vehicle_distance <= 110:
                 #self._my_flag = True
                 self._surpassing_police = True
                 #self.help_sorpassing(ego_vehicle_wp,'left')
                 self.lane_change('left')
                 # self._local_planner.set_speed(15) # da cambiare
-                self._local_planner.set_speed(30) # da cambiare
-                print('neeed to taigating')
-                return self._local_planner.run_step(debug=debug)
+                print('waypoint a sinistra')
+            return self._local_planner.run_step(debug=debug)
         else:
             if self._surpassing_police: #check altre auto ferme
                 #self.help_sorpassing(ego_vehicle_wp,'right')
