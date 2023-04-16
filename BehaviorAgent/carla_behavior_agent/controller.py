@@ -50,7 +50,7 @@ class VehicleController():
         self._world = self._vehicle.get_world()
         self.past_steering = self._vehicle.get_control().steer
         self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
-        self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
+        self._lat_controller = StanleyLateralController(self._vehicle, offset, **args_lateral)
 
 
     def run_step(self, target_speed, waypoint):
@@ -65,7 +65,7 @@ class VehicleController():
         """
 
         acceleration = self._lon_controller.run_step(target_speed)
-        current_steering = self._lat_controller.run_step(waypoint)
+        current_steering = self._lat_controller.run_step()
         control = carla.VehicleControl()
         if acceleration >= 0.0:
             control.throttle = min(acceleration, self.max_throt)
@@ -175,7 +175,7 @@ class StanleyLateralController():
     StanleyLateralController implements lateral control using a Stanley.
     """
 
-    def __init__(self, vehicle, offset=0, lookahead_distance=1.0, K_V=1.0, K_S=0.0, dt=0.03):
+    def __init__(self, vehicle, offset=0, lookahead_distance=0.65, K_V=1.0, K_S=0.0, dt=0.03):
         """
         Constructor method.
 
