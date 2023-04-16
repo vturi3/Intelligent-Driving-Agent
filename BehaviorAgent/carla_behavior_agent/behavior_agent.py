@@ -322,21 +322,22 @@ class BehaviorAgent(BasicAgent):
         
         police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
-        police_list = [w for w in police if dist(w) < 30]
+        police_list = [w for w in police if dist(w) < 45]
 
-        if police_list:
+        if police_list and str(ego_vehicle_wp.left_lane_marking.type) == 'Broken':
             vehicle_speed = get_speed(police_list[0])
             print(vehicle_speed)
             print("find auto police")
-            if vehicle_speed == 0.0:
+            self._local_planner.set_speed(30) # da cambiare
+            if vehicle_speed == 0.0 and dist(police_list[0]) < 30:
                 #self._my_flag = True
                 self._surpassing_police = True
                 #self.help_sorpassing(ego_vehicle_wp,'left')
                 self.lane_change('left')
                 # self._local_planner.set_speed(15) # da cambiare
-                self._local_planner.set_speed(30) # da cambiare
+                self._local_planner.set_speed(20) # da cambiare
                 print('neeed to taigating')
-                return self._local_planner.run_step(debug=debug)
+            return self._local_planner.run_step(debug=debug)
         else:
             if self._surpassing_police: #check altre auto ferme
                 #self.help_sorpassing(ego_vehicle_wp,'right')
@@ -347,22 +348,22 @@ class BehaviorAgent(BasicAgent):
 
         bikers = self._world.get_actors().filter("*vehicle.bh.crossbike*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
-        bikers_list = [w for w in bikers if dist(w) < 35]
+        bikers_list = [w for w in bikers if dist(w) < 30]
         print(bikers_list)
         
         if bikers_list:
             vehicle_speed = get_speed(bikers_list[0])
             print(vehicle_speed)
             print("find ciclista")
-            if vehicle_speed <= 50:
+            self._local_planner.set_speed(30) # da cambiare
+            if vehicle_speed <= 50 and dist(bikers_list[0]) < 15:
                 #self._my_flag = True
                 self._surpassing_biker = True
                 #self.help_sorpassing(ego_vehicle_wp,'left')
                 self.lane_change('left')
-                print('torno a right')
-                self._local_planner.set_speed(30) # da cambiare
+                self._local_planner.set_speed(20) # da cambiare
                 print('neeed to taigating')
-                return self._local_planner.run_step(debug=debug)
+            return self._local_planner.run_step(debug=debug)
         else:
             if self._surpassing_biker: #check altre auto ferme
                 #self.help_sorpassing(ego_vehicle_wp,'right')
