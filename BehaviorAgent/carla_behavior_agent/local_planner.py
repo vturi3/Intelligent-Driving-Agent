@@ -74,6 +74,8 @@ class LocalPlanner(object):
         self._min_waypoint_queue_length = 100
         self._stop_waypoint_creation = False
 
+        self._change_line = "None"
+
         # Base parameters
         self._dt = 1.0 / 20.0
         self._target_speed = 20.0  # Km/h
@@ -265,7 +267,13 @@ class LocalPlanner(object):
             control.manual_gear_shift = False
         else:
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
-            control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
+                    
+            if self._change_line == 'left':
+                control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_left_lane())
+            elif self._change_line == 'right':
+                control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_right_lane())
+            else:
+                control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
 
         #if debug:
         #    draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)

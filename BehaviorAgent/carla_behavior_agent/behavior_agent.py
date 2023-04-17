@@ -260,21 +260,6 @@ class BehaviorAgent(BasicAgent):
 
         return control
 
-    def help_sorpassing(self,waypoint,direction):
-
-        if direction =='left':
-            left_wpt = waypoint.get_left_lane()
-            print(left_wpt)
-            print(waypoint)
-            end_waypoint = self._local_planner.target_waypoint
-            self.set_destination(end_waypoint.transform.location,
-                                         left_wpt.transform.location)
-        else:
-            right_wpt = waypoint.get_right_lane()
-            end_waypoint = self._local_planner.target_waypoint
-            self.set_destination(end_waypoint.transform.location,
-                                         right_wpt.transform.location)
-
     def run_step(self, debug=False):
         """
         è il metodo che viene chiamato ad ogni tiemstep.  Prendo info ed eseguo il behavior planner, che può essere rappresentaot
@@ -290,13 +275,23 @@ class BehaviorAgent(BasicAgent):
         self._update_information()
         if self._my_flag:
             input()
-
         control = None
         if self._behavior.tailgate_counter > 0:
             self._behavior.tailgate_counter -= 1
 
         ego_vehicle_loc = self._vehicle.get_location()
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
+
+        vehicle_list = self._world.get_actors().filter("*vehicle*")
+
+        # usato x verificare logica del soprasso, da rimuovere
+        for actor in vehicle_list:
+                if 'role_name' in actor.attributes and actor.attributes['special_type'] == 'emergency':
+                    print('auto police')
+                    continue
+                if not('role_name' in actor.attributes and actor.attributes['role_name'] == 'hero' and actor.attributes['special_type'] != 'emergency'):
+                    actor.destroy() 
+
 
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.traffic_light_manager():
@@ -331,9 +326,7 @@ class BehaviorAgent(BasicAgent):
             if vehicle_speed == 0.0:
                 #self._my_flag = True
                 self._surpassing_police = True
-                #self.help_sorpassing(ego_vehicle_wp,'left')
-                self.lane_change('left')
-                # self._local_planner.set_speed(15) # da cambiare
+                self._local_planner._change_line = "left"
                 self._local_planner.set_speed(30) # da cambiare
                 print('neeed to taigating')
                 return self._local_planner.run_step(debug=debug)
@@ -342,6 +335,7 @@ class BehaviorAgent(BasicAgent):
                 #self.help_sorpassing(ego_vehicle_wp,'right')
                 #self.lane_change('right')
                 print('torno a right')
+                self._local_planner._change_line = "None"
                 self._surpassing_police = False
                 return self._local_planner.run_step(debug=debug)
 
@@ -358,8 +352,7 @@ class BehaviorAgent(BasicAgent):
                 #self._my_flag = True
                 self._surpassing_biker = True
                 #self.help_sorpassing(ego_vehicle_wp,'left')
-                self.lane_change('left')
-                print('torno a right')
+                self._local_planner._change_line = "left"
                 self._local_planner.set_speed(30) # da cambiare
                 print('neeed to taigating')
                 return self._local_planner.run_step(debug=debug)
@@ -368,6 +361,7 @@ class BehaviorAgent(BasicAgent):
                 #self.help_sorpassing(ego_vehicle_wp,'right')
                 #self.lane_change('right')
                 print('torno a right')
+                self._local_planner._change_line = "None"
                 self._surpassing_biker = False
                 return self._local_planner.run_step(debug=debug)
 

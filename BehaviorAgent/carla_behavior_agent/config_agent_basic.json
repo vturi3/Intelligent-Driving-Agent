@@ -13,9 +13,9 @@
             {"type": "sensor.speedometer", "id": "Speed"}
     ],
     "longitudinal_control_dict" : {"K_P": 0.37, "K_I": 0.032, "K_D": 0.024, "dt": 0.02},
-    "lateral_control_dict" : {"K_V": 1.5, "K_S": 2.5, "dt": 0.02},
-    "lateral_control_dict_pid" : {"K_P": 0.45, "K_I": 0.4, "K_D": 0.001, "dt": 0.06},
+    "lateral_control_dict_stanly" : {"K_V": 1.5, "K_S": 2.5, "dt": 0.02},
+    "lateral_control_dict" : {"K_P": 0.45, "K_I": 0.4, "K_D": 0.001, "dt": 0.06},
     "target_speed": 30.0,
-    "Visualizer_IP" : "",
+    "Visualizer_IP" : "0.0.0.0",
     "SaveSpeedData" : ""
 }
