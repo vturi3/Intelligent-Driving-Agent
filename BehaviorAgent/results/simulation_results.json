@@ -1,0 +1,60 @@
+{
+    "_checkpoint": {
+        "global_record": {},
+        "progress": [
+            1,
+            5
+        ],
+        "records": [
+            {
+                "index": 0,
+                "route_id": "RouteScenario_0_rep0",
+                "status": "Failed",
+                "num_infractions": 4,
+                "infractions": {
+                    "collisions_layout": [
+                        "Agent collided against object with type=static.pole and id=0 at (x=-3386.132, y=3244.946, z=358.912)"
+                    ],
+                    "collisions_pedestrian": [],
+                    "collisions_vehicle": [
+                        "Agent collided against object with type=vehicle.mini.cooper_s_2021 and id=3829 at (x=-3381.246, y=3241.298, z=358.874)",
+                        "Agent collided against object with type=vehicle.mini.cooper_s_2021 and id=3829 at (x=-3377.39, y=3237.341, z=358.893)"
+                    ],
+                    "red_light": [],
+                    "stop_infraction": [],
+                    "outside_route_lanes": [
+                        "Agent went outside its route lanes for about 5.215 meters (1.78% of the completed route)"
+                    ],
+                    "min_speed_infractions": [],
+                    "yield_emergency_vehicles_infractions": [],
+                    "scenario_timeouts": [],
+                    "route_dev": [],
+                    "vehicle_blocked": [],
+                    "route_timeout": []
+                },
+                "scores": {
+                    "score_route": 6.95,
+                    "score_penalty": 0.229833,
+                    "score_composed": 1.597339
+                },
+                "meta": {
+                    "route_length": 4210.947,
+                    "duration_game": 58.65,
+                    "duration_system": 119.468
+                }
+            }
+        ]
+    },
+    "entry_status": "Started",
+    "eligible": false,
+    "sensors": [
+        "carla_camera",
+        "carla_lidar",
+        "carla_radar",
+        "carla_gnss",
+        "carla_imu",
+        "carla_speedometer"
+    ],
+    "values": [],
+    "labels": []
+}

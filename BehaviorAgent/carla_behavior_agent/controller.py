@@ -175,7 +175,7 @@ class StanleyLateralController():
     StanleyLateralController implements lateral control using a Stanley.
     """
 
-    def __init__(self, vehicle, offset=0, lookahead_distance=1.0, K_V=1.0, K_S=0.0, dt=0.03):
+    def __init__(self, vehicle, offset=0, lookahead_distance=0.65, K_V=1.0, K_S=0.0, dt=0.03):
         """
         Constructor method.
 
