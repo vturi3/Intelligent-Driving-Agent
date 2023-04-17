@@ -105,6 +105,46 @@ def is_within_distance(target_transform, reference_transform, max_distance, angl
 
     return min_angle < angle < max_angle
 
+##our is_within_distance
+def our_is_within_distance(target_c_transform, reference_c_transform,target_rear_extent,refence_front_extent, max_distance, angle_interval=None):
+    """
+    Check if a location is both within a certain distance from a reference object.
+    By using 'angle_interval', the angle between the location and reference transform
+    will also be tkaen into account, being 0 a location in front and 180, one behind.
+
+    :param target_transform: location of the target object
+    :param reference_transform: location of the reference object
+    :param max_distance: maximum allowed distance
+    :param angle_interval: only locations between [min, max] angles will be considered. This isn't checked by default.
+    :return: boolean
+    """
+    #distance between the center of the two object´s bounding boxs
+    target_vector = np.array([
+        target_c_transform.location.x - reference_c_transform.location.x,
+        target_c_transform.location.y - reference_c_transform.location.y
+    ])
+    norm_target = np.linalg.norm(target_vector)
+    distance = norm_target - target_rear_extent - refence_front_extent
+    # If the vector is too short, we can simply stop here
+    if norm_target < 0.001:
+        return (True,0.001)
+
+    # Further than the max distance
+    if distance > max_distance:
+        return (False,distance)
+
+    # We don't care about the angle, nothing else to check
+    if not angle_interval:
+        return (True,distance)
+
+    min_angle = angle_interval[0]
+    max_angle = angle_interval[1]
+
+    fwd = reference_c_transform.get_forward_vector()
+    forward_vector = np.array([fwd.x, fwd.y])
+    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
+
+    return (min_angle < angle < max_angle, distance)
 
 def compute_magnitude_angle(target_location, current_location, orientation):
     """

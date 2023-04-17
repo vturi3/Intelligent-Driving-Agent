@@ -14,6 +14,7 @@ import carla
 from basic_agent import BasicAgent
 from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
+import operator
 
 from misc import get_speed, positive, is_within_distance, compute_distance
 
@@ -52,6 +53,7 @@ class BehaviorAgent(BasicAgent):
         self._min_speed = 5
         self._behavior = None
         self._sampling_resolution = 4.5
+        self.surpCounter = 0
 
         # Parameters for agent behavior
         if behavior == 'cautious':
@@ -162,19 +164,18 @@ class BehaviorAgent(BasicAgent):
 
         # logica è uguale a quella del pedone.
         vehicle_list = self._world.get_actors().filter("*vehicle*")
-        def dist(v): return v.get_location().distance(waypoint.transform.location)
-        vehicle_list = [v for v in vehicle_list if dist(v) < 45 and v.id != self._vehicle.id]
+        vehicle_list = self.order_by_dist(vehicle_list, waypoint, 45, True)
 
         if self._direction == RoadOption.CHANGELANELEFT:
-            vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
+            vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=-1)
         elif self._direction == RoadOption.CHANGELANERIGHT:
-            vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
+            vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=180, lane_offset=1)
         else:
-            vehicle_state, vehicle, distance = self._vehicle_obstacle_detected(
+            vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
             # tiene in considerazione anche
@@ -201,21 +202,62 @@ class BehaviorAgent(BasicAgent):
         """
         # prendo i pedoni, calcolo le distanze tra pedone e dove ci troviamo, prendo solo <10 metri di distanza.
         walker_list = self._world.get_actors().filter("*walker.pedestrian*")
-        def dist(w): return w.get_location().distance(waypoint.transform.location)
-        walker_list = [w for w in walker_list if dist(w) < 10]
+        walker_list = self.order_by_dist(walker_list, waypoint, 10)
 
         # vedo se siamo in collisione con pedone, magari distanza piccola però ci ha gia superato, a seconda delle posizioni e di cosa dobbiamo fare valutiamo in modo diverso la _vehicle_obstacle_detected (in realtà sarebbe obj), si può usare x qualsiasi cosa in carla, l'importante è passare la lista di obj in ingresso. verifico se sono in collisione con la lista di obj passati. Resistuisce se obj influenza la nostra guida, chi è e la distanza.
         if self._direction == RoadOption.CHANGELANELEFT:
-            walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
+            walker_state, walker, distance = self._our_vehicle_obstacle_detected(walker_list, max(
                 self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
         elif self._direction == RoadOption.CHANGELANERIGHT:
-            walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
+            walker_state, walker, distance = self._our_vehicle_obstacle_detected(walker_list, max(
                 self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
-            walker_state, walker, distance = self._vehicle_obstacle_detected(walker_list, max(
+            walker_state, walker, distance = self._our_vehicle_obstacle_detected(walker_list, max(
                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
 
         return walker_state, walker, distance
+
+    def bikers_avoid_manager(self, waypoint):
+        """
+        This module is in charge of warning in case of a collision
+        with any pedestrian.
+
+            :param location: current location of the agent
+            :param waypoint: current waypoint of the agent
+            :return vehicle_state: True if there is a walker nearby, False if not
+            :return vehicle: nearby walker
+            :return distance: distance to nearby walker
+        """
+        # prendo i pedoni, calcolo le distanze tra pedone e dove ci troviamo, prendo solo <10 metri di distanza.
+        bikers_list = list(self._world.get_actors().filter("*vehicle.bh.crossbike*"))
+        bikers_list += list(self._world.get_actors().filter("*vehicle.gazelle.omafiets*"))
+        bikers_list += list(self._world.get_actors().filter("*vehicle.diamondback.century*"))
+
+        bikers_list = self.order_by_dist(bikers_list, waypoint, 45)
+
+        #controlliamo le tre condizioni differenti:
+        if self._direction == RoadOption.CHANGELANELEFT:
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+        elif self._direction == RoadOption.CHANGELANERIGHT:
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+        else:
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+        return static_obj_state, static_obj, distance
+
+    def static_obstacle_avoid_manager(self, waypoint):
+        #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
+        #filtrare tutt gli ostacoli statici
+        static_obj_list = self._world.get_actors().filter("*static.prop*")
+        static_obj_list = self.order_by_dist(static_obj_list, waypoint, 45)
+
+        #controlliamo le tre condizioni differenti:
+        if self._direction == RoadOption.CHANGELANELEFT:
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+        elif self._direction == RoadOption.CHANGELANERIGHT:
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+        else:
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+        return static_obj_state, static_obj, distance
 
     def car_following_manager(self, vehicle, distance, debug=False):
         """
@@ -259,6 +301,18 @@ class BehaviorAgent(BasicAgent):
             control = self._local_planner.run_step(debug=debug)
 
         return control
+
+    def order_by_dist(self, object_list, waypoint, max_dist, check_not_our_vehicle=False):
+        def dist(s): return s.get_location().distance(waypoint.transform.location)
+        #qua ho messo dieci pero va scelto il giusto valore.
+        #creiamo un dizionario in modo da ordinare a seconda delle distanze in ordine crescente
+        if check_not_our_vehicle:
+            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist and s.id != self._vehicle.id}
+        else:
+            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist}
+        #otteniamo ora la lista corrispondente ordinata per valore
+        ordered_dict = dict(sorted(static_obj_dict.items(),key=operator.itemgetter(1)))
+        return list(ordered_dict.keys())
 
     def help_sorpassing(self,waypoint,direction):
 
@@ -311,102 +365,142 @@ class BehaviorAgent(BasicAgent):
         if walker_state:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = w_distance - np.sqrt(np.square(walker.bounding_box.extent.y/2) + np.square(walker.bounding_box.extent.x/2)) - np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
-            print("WALKER STATE la distanza dal pedone è: ", distance)
-            if distance < 0:
-                distance = 0.5
+            print("WALKER STATE la distanza dal pedone è: ", w_distance)
+            delta_v =  self._speed - get_speed(walker)
+            if delta_v < 0:
+                delta_v = 0
             # Emergency brake if the car is very close.
-            if distance < self._behavior.braking_distance and self._surpassing_police == False and self._surpassing_biker == False:
-                print("found pedone")
+            if w_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
                 return self.emergency_stop()
+            elif w_distance < self._behavior.braking_distance + delta_v * 0.2:
+                return self.controlled_stop(walker, w_distance)
         
-        police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
-        def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
-        police_list = [w for w in police if dist(w) < 30]
+        ###POLICE OBSTACLE SORPASSO PROBLEMATICA###
+        # police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
+        # def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
+        # police_list = [w for w in police if dist(w) < 30]
 
-        if police_list:
-            vehicle_speed = get_speed(police_list[0])
-            print(vehicle_speed)
-            print("find auto police")
-            if vehicle_speed == 0.0:
-                #self._my_flag = True
-                self._surpassing_police = True
-                #self.help_sorpassing(ego_vehicle_wp,'left')
-                self.lane_change('left')
-                # self._local_planner.set_speed(15) # da cambiare
-                self._local_planner.set_speed(30) # da cambiare
-                print('neeed to taigating')
-                return self._local_planner.run_step(debug=debug)
-        else:
-            if self._surpassing_police: #check altre auto ferme
-                #self.help_sorpassing(ego_vehicle_wp,'right')
-                #self.lane_change('right')
-                print('torno a right')
-                self._surpassing_police = False
-                return self._local_planner.run_step(debug=debug)
+        # if police_list:
+        #     vehicle_speed = get_speed(police_list[0])
+        #     print(vehicle_speed)
+        #     print("find auto police")
+        #     if vehicle_speed == 0.0:
+        #         #self._my_flag = True
+        #         self._surpassing_police = True
+        #         #self.help_sorpassing(ego_vehicle_wp,'left')
+        #         self.lane_change('left')
+        #         # self._local_planner.set_speed(15) # da cambiare
+        #         self._local_planner.set_speed(30) # da cambiare
+        #         print('neeed to taigating')
+        #         return self._local_planner.run_step(debug=debug)
+        # else:
+        #     if self._surpassing_police: #check altre auto ferme
+        #         #self.help_sorpassing(ego_vehicle_wp,'right')
+        #         self.lane_change('right',same_lane_time=1, other_lane_time=1, lane_change_time=5)
+        #         print('torno a right')
+        #         self._surpassing_police = False
+        #         return self._local_planner.run_step(debug=debug)
 
-        bikers = self._world.get_actors().filter("*vehicle.bh.crossbike*")
-        def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
-        bikers_list = [w for w in bikers if dist(w) < 35]
-        print(bikers_list)
-        
-        if bikers_list:
-            vehicle_speed = get_speed(bikers_list[0])
-            print(vehicle_speed)
-            print("find ciclista")
-            if vehicle_speed <= 50:
-                #self._my_flag = True
-                self._surpassing_biker = True
-                #self.help_sorpassing(ego_vehicle_wp,'left')
-                self.lane_change('left')
-                print('torno a right')
-                self._local_planner.set_speed(30) # da cambiare
-                print('neeed to taigating')
-                return self._local_planner.run_step(debug=debug)
-        else:
-            if self._surpassing_biker: #check altre auto ferme
-                #self.help_sorpassing(ego_vehicle_wp,'right')
-                #self.lane_change('right')
-                print('torno a right')
-                self._surpassing_biker = False
-                return self._local_planner.run_step(debug=debug)
+        biker_state, biker, b_distance = self.bikers_avoid_manager(ego_vehicle_wp)
+        if biker_state or self.surpCounter > 0:
+            delta_v =  self._speed - get_speed(biker)
+            if delta_v < 0:
+                delta_v = 0
+            print("BIKERS STATE la distanza dal veicolo è: ", b_distance)
+            # Emergency brake if the car is very close.
+            if b_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+                return self.emergency_stop()
+            elif b_distance < self._behavior.braking_distance + delta_v * 0.2:
+                return self.controlled_stop(biker, b_distance)
+            
+        ###LOGICA BIKE SORPASSO PROBLEMATICA####
+        #     if self._surpassing_biker == False:
+        #         self.surpCounter = 200
+        #     print("CICLISTA STATE")
+        #     if biker_state:
+        #         t_speed = get_speed(biker)
+        #     else:
+        #         t_speed = 5
+        #     vehicle_state, vehicle, vec_distance = self._vehicle_obstacle_detected(
+        #             self._world.get_actors().filter("*vehicle*"), 
+        #             max(self._behavior.min_proximity_threshold*2, self._speed_limit / 2), 
+        #             up_angle_th=150, lane_offset=-1
+        #             )
+        #     print("la distanza dalla macchina rilevata è: ",vec_distance, "e il veicolo è: ",vehicle)
+            
+        #     if (not vehicle_state or vec_distance > 5) or (self._surpassing_biker and self.surpCounter > 0):
+        #         if t_speed < get_speed(self._vehicle)/2 or t_speed < 10 :
+        #             print("CICLISTA TI SORPASSO")
+        #             #self._my_flag = True
+        #             if not self._surpassing_biker:
+        #                 self.lane_change('left',other_lane_time = 8,lane_change_time = 8)
+        #             self._surpassing_biker = True
+        #             #self.help_sorpassing(ego_vehicle_wp,'left')
+        #             if t_speed < 5:
+        #                 self._local_planner.set_speed(40)
+        #             self.surpCounter -= 1
+        #             print('neeed to taigating')
+        #             return self._local_planner.run_step(debug=debug)
+        #     else:
+        #         print("CICLISTA NON TI SORPASSO LA MACCHINA STA A: ", vec_distance)
+        # elif self._surpassing_biker: #check altre auto ferme
+        #     print("CICLISTA RIENTRO")
+        #     input()
+        #     self.lane_change('left')
+        #     #self.help_sorpassing(ego_vehicle_wp,'right')
+        #     #self.lane_change('right',other_lane_time = 4)
+        #     print('torno a right')
+        #     self._surpassing_biker = False
+        #     #return self._local_planner.run_step(debug=debug)
 
 
         # 2.2: Car following behaviors
-        vehicle_state, vehicle, distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+        vehicle_state, vehicle, v_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         # stesso principio del pedone.
         if vehicle_state:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            distance = distance - np.sqrt(np.square(vehicle.bounding_box.extent.y/2) +  np.square(vehicle.bounding_box.extent.x)) - np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
-            if distance < 0:
-                distance = 0.5
-            print("VEHICLE STATE la distanza dal veicolo è: ", distance)
+            print("VEHICLE STATE la distanza dal veicolo è: ", v_distance)
+            delta_v =  self._speed - get_speed(vehicle)
+            if delta_v < 0:
+                delta_v = 0
             # Emergency brake if the car is very close.
-            if distance < self._behavior.braking_distance:
-                return self.controlled_stop(vehicle, distance)
-            elif distance < self._behavior.braking_distance/4:
+            if v_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
                 return self.emergency_stop()
+            elif v_distance < self._behavior.braking_distance + delta_v * 0.2:
+                return self.controlled_stop(vehicle, v_distance)
             else:
-                control = self.car_following_manager(vehicle, distance)
+                return self.car_following_manager(vehicle, v_distance)
+
+        #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
+        static_obj_state, static_obj, obs_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
+        if static_obj_state:
+            print("STATIC OBJ la distance dall'obj è: ", obs_distance)
+            delta_v =  self._speed - get_speed(static_obj)
+            if delta_v < 0:
+                delta_v = 0
+            # Emergency brake if the car is very close.
+            if obs_distance < self._behavior.braking_distance/4 + delta_v * 0.3:
+                return self.emergency_stop()
+            elif obs_distance < self._behavior.braking_distance + delta_v * 0.3:
+                return self.controlled_stop(static_obj, obs_distance)
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
-        elif self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+        if self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
             print("JUNCTION STATE")
             target_speed = min([
                     self._behavior.max_speed,
                     self._speed_limit - 5])
             self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step(debug=debug)
+            return self._local_planner.run_step(debug=debug)
 
         # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
-        else:
-            print("NORMAL BEHAVIOUR")
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
-            self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step(debug=debug)
+        print("NORMAL BEHAVIOUR")
+        target_speed = min([
+            self._behavior.max_speed,
+            self._speed_limit - self._behavior.speed_lim_dist])
+        self._local_planner.set_speed(target_speed)
+        control = self._local_planner.run_step(debug=debug)
 
         print(self._local_planner._target_speed)
 
@@ -432,15 +526,18 @@ class BehaviorAgent(BasicAgent):
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
         control = self.emergency_stop()
         # Under safety time distance, slow down.
-        if ttc > 0.0:
-            target_speed = (ttc/self._behavior.safety_time) * self._speed
-            print("devo rallentare, velocità: ", target_speed)
+        if distance <= 2:
+            return control
+        elif self._speed < 15 and distance > 2:
+            target_speed = distance * 3
+            print("devo rallentare sono ancora lontano, l'obj vel è:",vehicle_speed," velocità: ", target_speed)
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
-        if self._speed < 5 and distance > 2:
-            target_speed = distance * 2
-            print("devo rallentare, velocità: ", target_speed)
+        elif ttc > 0.0:
+            target_speed = max((ttc/self._behavior.safety_time) * self._speed, self._behavior.speed_decrease)
+            print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
+
         # per le derapate a True
         return control
