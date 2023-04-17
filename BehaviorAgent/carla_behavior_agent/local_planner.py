@@ -275,8 +275,8 @@ class LocalPlanner(object):
             else:
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
 
-        #if debug:
-        #    draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
+        if True:
+           draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
 
         return control
 

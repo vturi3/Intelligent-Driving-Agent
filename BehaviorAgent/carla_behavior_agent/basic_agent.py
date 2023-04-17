@@ -15,9 +15,10 @@ from shapely.geometry import Polygon
 from local_planner import LocalPlanner, RoadOption
 from global_route_planner import GlobalRoutePlanner
 from datetime import datetime,timedelta
-from misc import (get_speed, is_within_distance,
+from misc import (get_speed, is_within_distance,our_is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
+import numpy as np
 # from perception.perfectTracker.gt_tracker import PerfectTracker
 
 class BasicAgent(object):
@@ -548,9 +549,121 @@ class BasicAgent(object):
                     x=target_extent * target_forward_vector.x,
                     y=target_extent * target_forward_vector.y,
                 )
+                
                 # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo cago.
                 if is_within_distance(target_rear_transform, ego_front_transform, max_distance, [low_angle_th, up_angle_th]):
                     return (True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
+
+            # Waypoints aren't reliable, check the proximity of the vehicle to the route, in questo caso sono in un incrocio. Segue una logica che dipende dalla traiettoria, viene costrituito in poligono sulla nostra traiettoria. Viene valutato dove ci trovamo, quanto siamo grandi (laterali), per ogni punto del plan valuto se la distanza nostra dal punto del plan è troppo lontana non mi interessa ( prendo solo punti plan vicini ). In quel punto del plan ci passo, voglio sapere li il mio "poligono". Alla fine costruisco nei waypoint i poligono su tutti i punti del plan, cosi ho un poligono della nstra traiettoria (l'abbiamo visto a lezione).
+            else:
+                route_bb = []
+                ego_location = ego_transform.location
+                extent_y = self._vehicle.bounding_box.extent.y
+                r_vec = ego_transform.get_right_vector()
+                p1 = ego_location + carla.Location(extent_y * r_vec.x, extent_y * r_vec.y)
+                p2 = ego_location + carla.Location(-extent_y * r_vec.x, -extent_y * r_vec.y)
+                route_bb.append([p1.x, p1.y, p1.z])
+                route_bb.append([p2.x, p2.y, p2.z])
+
+                for wp, _ in self._local_planner.get_plan():
+                    if ego_location.distance(wp.transform.location) > max_distance:
+                        break
+
+                    r_vec = wp.transform.get_right_vector()
+                    p1 = wp.transform.location + carla.Location(extent_y * r_vec.x, extent_y * r_vec.y)
+                    p2 = wp.transform.location + carla.Location(-extent_y * r_vec.x, -extent_y * r_vec.y)
+                    route_bb.append([p1.x, p1.y, p1.z])
+                    route_bb.append([p2.x, p2.y, p2.z])
+
+                if len(route_bb) < 3:
+                    # 2 points don't create a polygon, nothing to check
+                    return (False, None, -1)
+                ego_polygon = Polygon(route_bb)
+
+                # Compare the two polygons, per tutti gli obj passati in ingresso, se mi trovo in intersection faccio questa valuazione. Se sono io quello che analizzo o è troppo distanet nn lo cago. Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
+                # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
+                for target_vehicle in vehicle_list:
+                    target_extent = target_vehicle.bounding_box.extent.x
+                    if target_vehicle.id == self._vehicle.id:
+                        continue
+                    if ego_location.distance(target_vehicle.get_location()) > max_distance:
+                        continue
+
+                    target_bb = target_vehicle.bounding_box
+                    target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform())
+                    target_list = [[v.x, v.y, v.z] for v in target_vertices]
+                    target_polygon = Polygon(target_list)
+
+                    if ego_polygon.intersects(target_polygon):
+                        return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+
+                return (False, None, -1)
+
+        return (False, None, -1)
+
+    def _our_vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
+        """
+        Method to check if there is a vehicle in front of the agent blocking its path.
+
+            :param vehicle_list (list of carla.Vehicle): list contatining vehicle objects.
+                If None, all vehicle in the scene are used
+            :param max_distance: max freespace to check for obstacles.
+                If None, the base threshold value is used
+        """
+        # funzione x valutare se un ostacolo si trova in una posizione bloccate x il nostro agente (bloccante nel senso che sta dove dobbiamo andare noi). Gli passiamo la lista (come detto prima), max distanza sotto la quale lo consideriamo bloccante.
+
+        if self._ignore_vehicles:
+            return (False, None, -1)
+
+        if not vehicle_list:
+            return (False, None, -1)
+
+        if not max_distance:
+            max_distance = self._base_vehicle_threshold
+
+        ego_transform = self._vehicle.get_transform()
+        ego_wpt = self._map.get_waypoint(self._vehicle.get_location())
+
+        # Get the right offset
+        if ego_wpt.lane_id < 0 and lane_offset != 0:
+            lane_offset *= -1
+
+        # Get the transform of the front of the ego, Vedo in quale lane si trova e sta cercando di capire se esiste un offset della lane
+        ego_forward_vector = ego_transform.get_forward_vector()
+        ego_extent = self._vehicle.bounding_box.extent.x
+        ego_front_transform = ego_transform
+        ego_front_transform.location += carla.Location(
+            x=ego_extent * ego_forward_vector.x,
+            y=ego_extent * ego_forward_vector.y,
+        )
+        # l'idea è verficiare dove voglio andare e dove si trova il vehicle, se si trova sulla nostra corsia e strada. Quello che succede è valutare la direzione e la posizione del vehicle.
+
+        for target_vehicle in vehicle_list:
+            # per ogni vehicle della lista
+            target_transform = target_vehicle.get_transform()
+            target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
+            # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
+            # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
+            if not ego_wpt.is_junction or not target_wpt.is_junction:
+                if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id  + lane_offset:
+                    # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
+                    next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
+                    if not next_wpt:
+                        continue
+                    if target_wpt.road_id != next_wpt.road_id or target_wpt.lane_id != next_wpt.lane_id  + lane_offset:
+                        continue
+
+                # la rear trasform punto posteriore del vehicolo, se si trova ad una certa distanza dal nostro punto anteriore,
+
+                target_rear_transform = target_transform
+                target_rear_extent = np.sqrt(np.square(target_vehicle.bounding_box.extent.y/2) + np.square(target_vehicle.bounding_box.extent.x/2))
+                ego_rear_extent = np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
+                # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo cago.
+                is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
+                if dist < 0:
+                    dist = 0.5
+                if is_within:
+                    return (True, target_vehicle, dist)
 
             # Waypoints aren't reliable, check the proximity of the vehicle to the route, in questo caso sono in un incrocio. Segue una logica che dipende dalla traiettoria, viene costrituito in poligono sulla nostra traiettoria. Viene valutato dove ci trovamo, quanto siamo grandi (laterali), per ogni punto del plan valuto se la distanza nostra dal punto del plan è troppo lontana non mi interessa ( prendo solo punti plan vicini ). In quel punto del plan ci passo, voglio sapere li il mio "poligono". Alla fine costruisco nei waypoint i poligono su tutti i punti del plan, cosi ho un poligono della nstra traiettoria (l'abbiamo visto a lezione).
             else:
