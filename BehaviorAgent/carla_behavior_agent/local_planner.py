@@ -261,10 +261,10 @@ class LocalPlanner(object):
             for _ in range(num_waypoint_removed):
                 self._waypoints_queue.popleft()
 
-        if vehicle_speed > 45 and changed == False:
+        if changed == False and vehicle_speed > 45:
             self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
             changed = True
-        if vehicle_speed <= 45 and changed:
+        if changed and vehicle_speed <= 45:
             self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
             changed = False
 
