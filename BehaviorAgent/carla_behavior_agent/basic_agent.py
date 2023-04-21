@@ -629,6 +629,8 @@ class BasicAgent(object):
             lane_offset *= -1
 
         # Get the transform of the front of the ego, Vedo in quale lane si trova e sta cercando di capire se esiste un offset della lane
+        
+        ego_rear_extent = np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
         ego_forward_vector = ego_transform.get_forward_vector()
         ego_extent = self._vehicle.bounding_box.extent.x
         ego_front_transform = ego_transform
@@ -640,24 +642,43 @@ class BasicAgent(object):
 
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
+            print("veicolo: ",target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
             # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
             if not ego_wpt.is_junction or not target_wpt.is_junction:
-                if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id  + lane_offset:
+                print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                if target_wpt.lane_id * ego_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW:
+                    print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
+                    cond = 2*lane_offset*ego_wpt.lane_id
+                else:
+                    cond =  lane_offset
+                
+                # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
+                bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+                tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]  # l'angolo in alto a destra
+                print("SNJADLAKAJKAFBKABFDBFALJK WAYPOINT:", tv_vertexs_lane_id)
+
+                if target_wpt.road_id != ego_wpt.road_id or ego_wpt.lane_id + cond not in tv_vertexs_lane_id:
+                    print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
                     next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
                     if not next_wpt:
                         continue
-                    if target_wpt.road_id != next_wpt.road_id or target_wpt.lane_id != next_wpt.lane_id  + lane_offset:
+                    if target_wpt.lane_id * next_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW:
+                        print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
+                        cond = - 2*lane_offset*next_wpt.lane_id
+                    else:
+                        cond =  lane_offset
+                    if target_wpt.road_id != next_wpt.road_id or target_wpt.lane_id != next_wpt.lane_id  + cond:
                         continue
 
                 # la rear trasform punto posteriore del vehicolo, se si trova ad una certa distanza dal nostro punto anteriore,
 
                 target_rear_transform = target_transform
                 target_rear_extent = np.sqrt(np.square(target_vehicle.bounding_box.extent.y/2) + np.square(target_vehicle.bounding_box.extent.x/2))
-                ego_rear_extent = np.sqrt(np.square(self._vehicle.bounding_box.extent.y/2) + np.square(self._vehicle.bounding_box.extent.x/2))
                 # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo cago.
                 is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
                 if dist < 0:

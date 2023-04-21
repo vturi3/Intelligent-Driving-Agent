@@ -12,7 +12,7 @@ import random
 import carla
 from controller import VehicleController
 from misc import draw_waypoints, get_speed
-
+import numpy as np
 
 class RoadOption(IntEnum):
     """
@@ -27,7 +27,16 @@ class RoadOption(IntEnum):
     CHANGELANELEFT = 5
     CHANGELANERIGHT = 6
 
+class MyWaypoint:
+    def __init__(self, location, rotation=None):
+        self.transform = carla.Transform(location, rotation)
+    
+    def set_transform(self, transform):
+        self.transform = transform
 
+    def get_transform(self):
+        return self.transform
+    
 class LocalPlanner(object):
     """
     LocalPlanner implements the basic behavior of following a
@@ -104,12 +113,7 @@ class LocalPlanner(object):
                 self._args_longitudinal_dict = opt_dict['longitudinal_control_dict']
             if 'max_throttle' in opt_dict:
                 self._max_throt = opt_dict['max_throttle']
-            if 'max_brake' in opt_dict:
-                self._max_brake = opt_dict['max_brake']
-            if 'max_steering' in opt_dict:
-                self._max_steer = opt_dict['max_steering']
-            if 'offset' in opt_dict:
-                self._offset = opt_dict['offset']
+            if 'max_brake' in opt_dict:carla.Location
             if 'base_min_distance' in opt_dict:
                 self._base_min_distance = opt_dict['base_min_distance']
             if 'distance_ratio' in opt_dict:
@@ -272,6 +276,27 @@ class LocalPlanner(object):
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_left_lane())
             elif self._change_line == 'right':
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_right_lane())
+            elif self._change_line == 'center':
+                delta = 2.0  # quantità di spostamento in metri
+                left_lane_waypoint = self.target_waypoint.get_left_lane()
+                diff = np.array([left_lane_waypoint.transform.location.x - self.target_waypoint.transform.location.x,
+                                left_lane_waypoint.transform.location.y - self.target_waypoint.transform.location.y,
+                                left_lane_waypoint.transform.location.z - self.target_waypoint.transform.location.z])
+                diff_norm = np.linalg.norm(diff)
+                if diff_norm > 0:
+                    diff_normalized = diff / diff_norm
+                    print("diff_normalized: ", diff_normalized)
+                    displacement = diff_normalized * delta
+                    waypoint = self.target_waypoint
+                    print("self.target_waypoint.transform.location: ", waypoint.transform.location)
+                    x = waypoint.transform.location.x + displacement[0]
+                    y = waypoint.transform.location.y + displacement[1]
+                    z = waypoint.transform.location.z + displacement[2]
+                    new_location = carla.Location(x, y, z)
+                    new_waypoint = MyWaypoint(new_location, waypoint.transform.rotation)
+                    print("self.target_waypoint.transform.location", new_waypoint.get_transform().location)
+                    print("self.target_waypoint.transform.location", new_waypoint.transform.location)
+                control = self._vehicle_controller.run_step(self._target_speed, new_waypoint)
             else:
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
 
@@ -356,3 +381,5 @@ def _compute_connection(current_waypoint, next_waypoint, threshold=35):
         return RoadOption.LEFT
     else:
         return RoadOption.RIGHT
+    
+
