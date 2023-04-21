@@ -1,6 +1,43 @@
 {
     "_checkpoint": {
-        "global_record": {},
+        "global_record": {
+            "index": -1,
+            "route_id": -1,
+            "status": "Failed",
+            "infractions": {
+                "collisions_layout": 0.0,
+                "collisions_pedestrian": 0.0,
+                "collisions_vehicle": 0.0,
+                "red_light": 0.0,
+                "stop_infraction": 0.0,
+                "outside_route_lanes": 0,
+                "min_speed_infractions": 0.0,
+                "yield_emergency_vehicles_infractions": 0.0,
+                "scenario_timeouts": 0.0,
+                "route_dev": 0.0,
+                "vehicle_blocked": 0.0,
+                "route_timeout": 0.0
+            },
+            "scores_mean": {
+                "score_composed": 2.854,
+                "score_route": 2.854,
+                "score_penalty": 0.2
+            },
+            "scores_std_dev": {
+                "score_composed": 5.708,
+                "score_route": 5.708,
+                "score_penalty": 0.4
+            },
+            "meta": {
+                "exceptions": [
+                    [
+                        "RouteScenario_0_rep0",
+                        0,
+                        "Failed - Simulation crashed"
+                    ]
+                ]
+            }
+        },
         "progress": [
             1,
             5
@@ -8,8 +45,8 @@
         "records": [
             {
                 "index": 0,
-                "route_id": "RouteScenario_8_rep0",
-                "status": "Failed - Agent crashed",
+                "route_id": "RouteScenario_0_rep0",
+                "status": "Failed - Simulation crashed",
                 "num_infractions": 0,
                 "infractions": {
                     "collisions_layout": [],
@@ -26,19 +63,19 @@
                     "route_timeout": []
                 },
                 "scores": {
-                    "score_route": 0.0,
+                    "score_route": 14.27,
                     "score_penalty": 1.0,
-                    "score_composed": 0.0
+                    "score_composed": 14.27
                 },
                 "meta": {
-                    "route_length": 4018.125,
-                    "duration_game": 0.1,
-                    "duration_system": 6.757
+                    "route_length": 4210.947,
+                    "duration_game": 57.45,
+                    "duration_system": 99.773
                 }
             }
         ]
     },
-    "entry_status": "Started",
+    "entry_status": "Crashed",
     "eligible": false,
     "sensors": [
         "carla_camera",
@@ -48,6 +85,38 @@
         "carla_imu",
         "carla_speedometer"
     ],
-    "values": [],
-    "labels": []
+    "values": [
+        "2.854",
+        "2.854",
+        "0.2",
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0",
+        "0",
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0",
+        "0.0"
+    ],
+    "labels": [
+        "Avg. driving score",
+        "Avg. route completion",
+        "Avg. infraction penalty",
+        "Collisions with pedestrians",
+        "Collisions with vehicles",
+        "Collisions with layout",
+        "Red lights infractions",
+        "Stop sign infractions",
+        "Off-road infractions",
+        "Route deviations",
+        "Route timeouts",
+        "Agent blocked",
+        "Yield emergency vehicles infractions",
+        "Scenario timeouts",
+        "Min speed infractions"
+    ]
 }

@@ -89,7 +89,8 @@ class LocalPlanner(object):
         self._dt = 1.0 / 20.0
         self._target_speed = 20.0  # Km/h
         self._sampling_radius = 2.0
-        self._args_lateral_dict = {'K_V': 0.0, 'K_S': 0.0, 'dt': 0.0}
+        self._args_lateral_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
+        self._args_lateral_dict_fast = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
         self._args_longitudinal_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
         self._max_throt = 0.75
         self._max_brake = 0.3
@@ -109,6 +110,8 @@ class LocalPlanner(object):
                 self._sampling_radius = opt_dict['sampling_radius']
             if 'lateral_control_dict' in opt_dict:
                 self._args_lateral_dict = opt_dict['lateral_control_dict']
+            if 'lateral_control_dict_fast' in opt_dict:
+                self._args_lateral_dict_fast = opt_dict['lateral_control_dict_fast']
             if 'longitudinal_control_dict' in opt_dict:
                 self._args_longitudinal_dict = opt_dict['longitudinal_control_dict']
             if 'max_throttle' in opt_dict:
@@ -232,6 +235,7 @@ class LocalPlanner(object):
         :param debug: boolean flag to activate waypoints debugging
         :return: control to be applied
         """
+        changed = False
         if self._follow_speed_limits:
             self._target_speed = self._vehicle.get_speed_limit()
 
@@ -260,6 +264,13 @@ class LocalPlanner(object):
         if num_waypoint_removed > 0:
             for _ in range(num_waypoint_removed):
                 self._waypoints_queue.popleft()
+
+        if changed == False and vehicle_speed > 45:
+            self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
+            changed = True
+        if changed and vehicle_speed <= 45:
+            self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
+            changed = False
 
         # Get the target waypoint and move using the PID controllers. Stop if no target waypoint
         if len(self._waypoints_queue) == 0:
@@ -300,8 +311,8 @@ class LocalPlanner(object):
             else:
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
 
-        if True:
-           draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
+        #if True:
+           #draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
 
         return control
 
