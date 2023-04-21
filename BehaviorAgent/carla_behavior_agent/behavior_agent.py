@@ -456,9 +456,13 @@ class BehaviorAgent(BasicAgent):
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
         static_obj_state, static_obj, obs_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
         if static_obj_state:
-            static_obj_type = static_obj.attributes.get('object_type')
-            stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
+            #static_obj_type = static_obj.attributes.get('object_type')
+            #stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
+            stop_cond = static_obj.bounding_box.extent.z >= 0.25
+            print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
+            print("oggetto: ", static_obj)
             if stop_cond:
+                print("oggetto più alto di mezzo metro, mi fermo")
                 print("STATIC OBJ la distance dall'obj è: ", obs_distance)
                 delta_v =  self._speed - get_speed(static_obj)
                 if delta_v < 0:
