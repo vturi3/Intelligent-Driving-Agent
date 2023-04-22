@@ -17,7 +17,7 @@ from global_route_planner import GlobalRoutePlanner
 from datetime import datetime,timedelta
 from misc import (get_speed, is_within_distance,our_is_within_distance,
                                get_trafficlight_trigger_location,
-                               compute_distance)
+                               compute_distance,draw_bbox)
 import numpy as np
 # from perception.perfectTracker.gt_tracker import PerfectTracker
 
@@ -644,6 +644,7 @@ class BasicAgent(object):
         # l'idea è verficiare dove voglio andare e dove si trova il vehicle, se si trova sulla nostra corsia e strada. Quello che succede è valutare la direzione e la posizione del vehicle.
 
         for target_vehicle in vehicle_list:
+            draw_bbox(self._world, target_vehicle.bounding_box,target_vehicle.get_transform().rotation)
             # per ogni vehicle della lista
             print("veicolo: ",target_vehicle)
             target_transform = target_vehicle.get_transform()
@@ -811,3 +812,46 @@ class BasicAgent(object):
             plan.append((next_wp, RoadOption.LANEFOLLOW))
 
         return plan
+
+    def lengthen_bbox_along_x_axis(vehicle, alpha):
+        """
+        Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
+
+        Args:
+            vehicle: oggetto "Actor" rappresentante il veicolo
+            alpha: fattore di allungamento del bounding box lungo l'asse X
+
+        Returns:
+            BoundingBox: il bbox aggiornato
+        """
+
+        # ottieni il bounding box del veicolo
+        bbox = vehicle.bounding_box
+        bbox_extent = bbox.extent
+
+        # ottieni il forward vector del veicolo
+        forward_vector = vehicle.get_transform().get_forward_vector()
+
+        # ottieni la velocità del veicolo
+        velocity = vehicle.get_velocity()
+
+
+        # ottieni la velocità del veicolo
+        factor = alpha * forward_vector.x * velocity
+        
+        print("BBOX: fattore moltiplicativo ", factor)
+        
+        if factor < 1:
+            
+            return bbox
+
+        # calcola la quantità di spostamento lungo l'asse X
+        x_offset = bbox_extent.x * factor
+
+
+        # calcola le nuove dimensioni del bounding box
+        new_bbox_extent = carla.Vector3D(x=bbox_extent.x + x_offset, y=bbox_extent.y, z=bbox_extent.z)
+
+        return carla.BoundingBox(bbox.location, new_bbox_extent)
+
+

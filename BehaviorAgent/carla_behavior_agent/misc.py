@@ -27,6 +27,11 @@ def draw_waypoints(world, waypoints, z=0.5):
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
         world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=1.0)
 
+def draw_bbox(world, bbox,rotation):
+    """
+     da scrivere ora nn ho tempo
+    """
+    world.debug.draw_box(bbox,rotation ,0.05, carla.Color(255,0,0,0),0)  
 
 def get_speed(vehicle):
     """
