@@ -779,7 +779,7 @@ class BasicAgent(object):
                         print('Colpisco boundingBox')
                         input()
                         #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
-                        return (True, target_vehicle, 1.5)
+                        return (True, target_vehicle, 2.5)
 
 
                 return (False, None, -1)
