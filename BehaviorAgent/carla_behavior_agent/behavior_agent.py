@@ -15,7 +15,7 @@ from basic_agent import BasicAgent
 from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
 import operator
-from misc import get_speed, positive, is_within_distance, compute_distance
+from misc import get_speed, positive, is_within_distance, compute_distance, draw_bbox
 
 class BehaviorAgent(BasicAgent):
     """
@@ -461,13 +461,10 @@ class BehaviorAgent(BasicAgent):
             stop_cond = static_obj.bounding_box.extent.z >= 0.25
             static_obj_type = getattr(static_obj,'object_type',None)
             print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
-            print("oggetto: ", static_obj, "type: ", static_obj_type)
-            if static_obj_type != "static.prop.mesh" and static_obj_type != None:
+            print("static object: ", static_obj, "type: ", static_obj_type)
+            if static_obj_type != None:
                 if stop_cond:
-                    print("oggetto più alto di mezzo metro, mi fermo")
-                    trans=static_obj.get_transform()
-                    loc = self._map.get_waypoint(trans.location, lane_type=carla.LaneType.Any)
-                    print("lane id dell'oggetto: ", loc.lane_id,"mentre quella mia è", ego_vehicle_wp.lane_id)
+                    print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
                     delta_v =  self._speed - get_speed(static_obj)
                     if delta_v < 0:
