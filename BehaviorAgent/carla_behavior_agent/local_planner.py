@@ -99,6 +99,8 @@ class LocalPlanner(object):
         self._base_min_distance = 3.0
         self._distance_ratio = 0.5
         self._follow_speed_limits = False
+        self.delta = 0
+        self.dir = "left"
 
         # Overload parameters
         if opt_dict:
@@ -287,8 +289,11 @@ class LocalPlanner(object):
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_left_lane())
             elif self._change_line == 'right':
                 control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_right_lane())
-            elif self._change_line == 'center':
-                delta = 2.0  # quantità di spostamento in metri
+            elif self._change_line == 'shifting':
+                shift = 1
+                if self.dir == "right":
+                    shift = -1
+                real_delta = self.delta * shift
                 left_lane_waypoint = self.target_waypoint.get_left_lane()
                 diff = np.array([left_lane_waypoint.transform.location.x - self.target_waypoint.transform.location.x,
                                 left_lane_waypoint.transform.location.y - self.target_waypoint.transform.location.y,
@@ -297,7 +302,8 @@ class LocalPlanner(object):
                 if diff_norm > 0:
                     diff_normalized = diff / diff_norm
                     print("diff_normalized: ", diff_normalized)
-                    displacement = diff_normalized * delta
+                    print("real_delta: ", real_delta)
+                    displacement = diff_normalized * real_delta
                     waypoint = self.target_waypoint
                     print("self.target_waypoint.transform.location: ", waypoint.transform.location)
                     x = waypoint.transform.location.x + displacement[0]

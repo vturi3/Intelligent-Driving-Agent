@@ -15,6 +15,7 @@ from basic_agent import BasicAgent
 from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
 import operator
+from local_planner import MyWaypoint
 
 from misc import get_speed, positive, is_within_distance, compute_distance
 
@@ -358,26 +359,33 @@ class BehaviorAgent(BasicAgent):
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
         condToEnter = len([x for x in ego_vertexs_lane_id if x != self._before_surpass_lane_id]) > 0
         condForCheck = ego_vehicle_wp.lane_id != self._before_surpass_lane_id
+        print("self._surpassing_biker: ",self._surpassing_biker,"self._before_surpass_lane_id: ",self._before_surpass_lane_id ,"ego_vertexs_lane_id: ", ego_vertexs_lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
+        c = self._surpassing_biker and self._before_surpass_lane_id != None and condToEnter
+        print("c: ",c)
         if self._surpassing_biker and self._before_surpass_lane_id != None and condToEnter:
             print("end_surpassing(ego_vehicle_wp)")
             if self.end_surpassing(ego_vehicle_wp, condForCheck):
                 return self._local_planner.run_step(debug=debug)
 
         # 2.1: Pedestrian avoidance behaviors, verifico se ci sono pedoni che possono influenzare la guida
-        walker_state, walker, w_distance = self.pedestrian_avoid_manager(ego_vehicle_wp)
+        obstacle_dict = {"walker": list(self.pedestrian_avoid_manager(ego_vehicle_wp))}
+        obstacle_dict["biker"] = list(self.bikers_avoid_manager(ego_vehicle_wp))
+        obstacle_dict["vehicle"] = list(self.collision_and_car_avoid_manager(ego_vehicle_wp))
+        obstacle_dict["static_obj"] = list(self.static_obstacle_avoid_manager(ego_vehicle_wp))
+
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
-        if walker_state:
+        if obstacle_dict["walker"][0]:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
-            print("WALKER STATE la distanza dal pedone è: ", w_distance)
-            delta_v =  self._speed - get_speed(walker)
+            print("WALKER STATE la distanza dal pedone è: ", obstacle_dict["walker"][2])
+            delta_v =  self._speed - get_speed(obstacle_dict["walker"][1])
             if delta_v < 0:
                 delta_v = 0
             # Emergency brake if the car is very close.
-            if w_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+            if obstacle_dict["walker"][2] < self._behavior.braking_distance/4 + delta_v * 0.2:
                 return self.emergency_stop()
-            elif w_distance < self._behavior.braking_distance + delta_v * 0.2:
-                return self.controlled_stop(walker, w_distance)
+            elif obstacle_dict["walker"][2] < self._behavior.braking_distance + delta_v * 0.2:
+                return self.controlled_stop(obstacle_dict["walker"][1], obstacle_dict["walker"][2])
         
         # police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
         # def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
@@ -403,71 +411,68 @@ class BehaviorAgent(BasicAgent):
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
 
-        biker_state, biker, b_distance = self.bikers_avoid_manager(ego_vehicle_wp)
-
-        # logica per cominciare il sorpasso 
-        if biker_state and b_distance<10 and get_speed(biker) <= 20 and not self._surpassing_biker:
-            if self.start_surpassing(biker, ego_vehicle_wp):
-                return self._local_planner.run_step(debug=debug)
         
-        if biker_state:
-            biker_vehicle_loc = biker.get_location()
+        if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
+            return self._local_planner.run_step(debug=debug)
+
+        
+        if obstacle_dict["biker"][0]:
+            biker_vehicle_loc = obstacle_dict["biker"][1].get_location()
             biker_vehicle_wp = self._map.get_waypoint(biker_vehicle_loc)
             print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
             #input()
             if biker_vehicle_wp.lane_id != self._before_surpass_lane_id:
 
-                delta_v =  self._speed - get_speed(biker)
+                delta_v =  self._speed - get_speed(obstacle_dict["biker"][1])
                 if delta_v < 0:
                     delta_v = 0
-                print("BIKERS STATE la distanza dal veicolo è: ", b_distance, "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+                print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_biker:
                     #input()
                 # Emergency brake if the car is very close.
-                if b_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+                if obstacle_dict["biker"][2] < self._behavior.braking_distance/4 + delta_v * 0.2:
                     return self.emergency_stop()
-                elif b_distance < self._behavior.braking_distance + delta_v * 0.2:
-                    return self.controlled_stop(biker, b_distance)
+                elif obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v * 0.2:
+                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
 
         # 2.2: Car following behaviors
-        vehicle_state, vehicle, v_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+        
 
         # stesso principio del pedone.
-        if vehicle_state:
-            vehicle_vehicle_loc = vehicle.get_location()
+        if obstacle_dict["vehicle"][0]:
+            vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
             if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id:
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
-                print("VEHICLE STATE la distanza dal veicolo è: ", v_distance, "il veicolo è: ",vehicle, "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+                print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_biker:
                     #input()
-                delta_v =  self._speed - get_speed(vehicle)
+                delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
                 if delta_v < 0:
                     delta_v = 0
                 # Emergency brake if the car is very close.
-                if v_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+                if obstacle_dict["vehicle"][2] < self._behavior.braking_distance/4 + delta_v * 0.2:
                     return self.emergency_stop()
-                elif v_distance < self._behavior.braking_distance + delta_v * 0.2:
-                    return self.controlled_stop(vehicle, v_distance)
+                elif obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.2:
+                    return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
                 else:
-                    return self.car_following_manager(vehicle, v_distance)
+                    return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
-        static_obj_state, static_obj, obs_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
-        if static_obj_state:
-            static_obj_type = static_obj.attributes.get('object_type')
+        if obstacle_dict["static_obj"][0]:
+            static_obj_type = obstacle_dict["static_obj"][1].attributes.get('object_type')
             stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
             if stop_cond:
-                print("STATIC OBJ la distance dall'obj è: ", obs_distance)
-                delta_v =  self._speed - get_speed(static_obj)
+                print("STATIC OBJ la distance dall'obj è: ", obstacle_dict["static_obj"][2])
+                delta_v =  self._speed - get_speed(obstacle_dict["static_obj"][1])
                 if delta_v < 0:
                     delta_v = 0
                 # Emergency brake if the car is very close.
-                if obs_distance < self._behavior.braking_distance/4 + delta_v * 0.3:
+                if obstacle_dict["static_obj"][2] < self._behavior.braking_distance/4 + delta_v * 0.3:
                     return self.emergency_stop()
-                elif obs_distance < self._behavior.braking_distance + delta_v * 0.3:
-                    return self.controlled_stop(static_obj, obs_distance)
+                elif obstacle_dict["static_obj"][2] < self._behavior.braking_distance + delta_v * 0.3:
+                    return self.controlled_stop(obstacle_dict["static_obj"][1], obstacle_dict["static_obj"][2])
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
@@ -529,71 +534,130 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
     
-    def start_surpassing(self, obj_to_s, ego_vehicle_wp):
+    def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
+        self._surpassing_biker = True
         last_dir = self._direction
-        self._direction = RoadOption.CHANGELANELEFT
+        if dir == "left":
+            self._direction = RoadOption.CHANGELANELEFT
+        elif dir == "right":
+            # print("sorpasso a destra")
+            # input()
+            self._direction = RoadOption.CHANGELANERIGHT
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         self._direction = last_dir
+        if dir == "right":
+            print("láuto che non mi fa sorpassare è: ", com_vehicle)
+            input()
         if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
-            #input()
+            input()
             #self._my_flag = True
-            self._surpassing_biker = True
             self._before_surpass_lane_id = ego_vehicle_wp.lane_id
             #self.help_sorpassing(ego_vehicle_wp,'left')
-            self._local_planner._change_line = "center"
+            self._local_planner._change_line = "shifting"
+            self._local_planner.delta = self.meters_shifting(obj_to_s)
+            self._local_planner.dir = dir
             self._local_planner.set_speed(80) # da cambiare
             print('sto superando')
             return True
-        elif com_vehicle_state:
+        else:
+            self._surpassing_biker = False
             print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
-
         return False
 
     def end_surpassing(self, ego_vehicle_wp, check_if_left):
         last_dir = self._direction
-        if check_if_left:
+        if self._local_planner._change_line=="left":
             self._direction = RoadOption.CHANGELANERIGHT
+        elif self._local_planner._change_line=="right":        
+            self._direction = RoadOption.CHANGELANELEFT
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         self._direction = last_dir
+        if self._local_planner._change_line != "None":
+            print("non mi rientrare com_vehicle: ",com_vehicle)
+            input()
         if not com_vehicle_state:
             print('STO PER RIENTRARE IN CORSIA')
             #input()
             self._local_planner._change_line = "None"
+            self._local_planner.delta = 0
+            self._local_planner.dir = "left"
             self._surpassing_biker = False
             self._before_surpass_lane_id = None
             return True
         return False
             
+    def obstacle_avoidance(self, obj_dict, waypoint, ego_vertexs_lane_id):
+        # logica per cominciare il sorpasso 
+        if obj_dict["biker"][0] and obj_dict["biker"][2]<10 and get_speed(obj_dict["biker"][1]) <= 20 and not self._surpassing_biker:
+            if self.start_surpassing(obj_dict["biker"][1], waypoint, "left"):
+                return True
+        valori = []
+        for valore in obj_dict.values():
+            if valore[0]:
+                valori.append(valore[1])
+        ordered_objs = self.order_by_dist(valori, waypoint, 45, True)
+        if len(ordered_objs) > 0:
+            print("state 1")
+            #input()
+            bb_coords = ordered_objs[0].bounding_box.get_world_vertices(ordered_objs[0].get_transform())
+            obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
+            int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
+            not_my_lane_list = list(set(obj_vertexs_lane_id) - set(int_list))
+            #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
+            if len(int_list)>0 and len(not_my_lane_list)> 0:
+                print("state 2")
+                # input()
+                print("len(int_list): ", len(int_list), "len(not_my_lane_list): ", len(not_my_lane_list))
+                if not_my_lane_list[0] > waypoint.lane_id:
+                    print("not_my_lane_list[0]: ", not_my_lane_list[0], "waypoint.lane_id: ", waypoint.lane_id)
+                    if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                        print("state 3")
+                        input()
+                        return True
+                else:
+                    if self.start_surpassing(ordered_objs[0], waypoint, "right"): 
+                        print("state 3.1")
+                        input()
+                        return True
+        return False
 
-        
-        # if  and not self._surpassing_biker:
-
-        #         if com_vehicle_state:
-        #             print("allora vorrei superare il ciclista, ma ci sta una macchina la sua distanza è: ", com_vehicle_distance, "veicolo: ",com_vehicle)
-                
-        #             print("lo stronzo che butto giù si trova a:", com_vehicle_distance)
-        #             b_speed = get_speed(biker)
-        #             print(b_speed)
-        #             print("find ciclista")
-        #             if :
-                        
-        #         else:
-        #             print("il veicolo è troppo vicino la distanza: ", com_vehicle_distance, "mentre il veicolo è: ", com_vehicle)
-        #             input()
-                
-        # elif self._surpassing_biker: 
-        #     #check altre auto ferme
-        #     #self.help_sorpassing(ego_vehicle_wp,'right')
-        #     #self.lane_change('right')
-        #     print("CAZZZOZOOZOOZOZOZOZOZOZOOZOZOZOZOZOZOZOZOZOZOZOZOZOZ")
-        #     input()
-            
-        #     if com_vehicle_state:
-        #         self._local_planner.set_speed(50) # da cambiare
-        #     else:
-        #         print('torno a right')
-        #         self._local_planner._change_line = "right"
-        #         self._surpassing_biker = False
-        #         return self._local_planner.run_step(debug=debug)
-        #     self._direction = RoadOption.LANEFOLLOW
+    def meters_shifting(self, target_vehicle):
+        target_transform = target_vehicle.get_transform()
+        target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
+        #AGGIUNTA DI PROVA
+        #target_wpt è il punto centrale della lane su cui si trova il veicolo target
+        if self._direction == RoadOption.CHANGELANELEFT:
+            corresponding_t_wpt = target_wpt.get_left_lane() #qui deve essere chiamato left o right a seconda di dove mi trovo 
+        elif self._direction == RoadOption.CHANGELANERIGHT:
+            corresponding_t_wpt = target_wpt.get_right_lane() #qui deve essere chiamato left o right a seconda di dove mi trovo 
+        else:
+            corresponding_t_wpt = target_wpt
+        diff_lane = np.array([
+            target_wpt.transform.location.x - corresponding_t_wpt.transform.location.x,
+            target_wpt.transform.location.y - corresponding_t_wpt.transform.location.y,
+            target_wpt.transform.location.z - corresponding_t_wpt.transform.location.z])
+        #ottenere tutti i vertici del target vehicle target
+        target_bb = target_vehicle.bounding_box
+        target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform()) 
+        distances = {} 
+        for vertex in target_vertices:
+            #obtain the corresponding waypoint
+            vertex_waypoint = MyWaypoint(carla.Location(vertex), target_wpt.transform.rotation)
+            #calcoliamo la differenza di ciascun vertice dal target left
+            distances[vertex] = (np.linalg.norm(np.array([
+                vertex_waypoint.transform.location.x - corresponding_t_wpt.transform.location.x,
+                vertex_waypoint.transform.location.y - corresponding_t_wpt.transform.location.y,
+                vertex_waypoint.transform.location.z - corresponding_t_wpt.transform.location.z])))
+        #obtain the vertex associated with the max distance
+        print("distances: ",distances)
+        max_vertex = min(distances, key = lambda k: distances[k])
+        print("max_vertex: ",max_vertex)
+        #compute the distance between max_vertex and the target_wpt
+        diff_points = np.array([
+            target_wpt.transform.location.x - max_vertex.transform.location.x,
+            target_wpt.transform.location.y - max_vertex.transform.location.y,
+            target_wpt.transform.location.z - max_vertex.transform.location.z])
+        dot_product = np.dot(diff_points,diff_lane)
+        how_much_move = dot_product - np.linalg.norm(diff_lane)/2
+        return how_much_move
