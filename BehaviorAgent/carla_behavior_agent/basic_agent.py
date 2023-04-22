@@ -604,6 +604,49 @@ class BasicAgent(object):
 
         return (False, None, -1)
 
+    def allunga_bounding_box(self,vehicle, alpha=0.1):
+        """
+        Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
+
+        Args:
+            vehicle: oggetto "Actor" rappresentante il veicolo
+            alpha: fattore di allungamento del bounding box lungo l'asse X
+
+        Returns:
+            BoundingBox: il bbox aggiornato
+        """
+
+        # ottieni il bounding box del veicolo
+        bbox = vehicle.bounding_box
+        bbox_extent = bbox.extent
+
+        # ottieni la velocità del veicolo
+        velocity = get_speed(vehicle)
+
+        # ottieni la velocità del veicolo
+        factor = alpha * velocity
+                
+        if factor < 1:
+            
+            factor = 1
+
+        # calcola la quantità di spostamento lungo l'asse X
+        x_offset = bbox_extent.x * factor
+
+        print("BBOX: velocity  ", velocity)
+        print("BBOX: fattore moltiplicativo ", factor)
+        print("BBOX: offset ", x_offset)
+
+        # calcola le nuove dimensioni del bounding box
+        new_bbox_extent = carla.Vector3D(x=bbox_extent.x + x_offset, y=bbox_extent.y, z=2)
+
+        print("BBOX: new bbox extent" , new_bbox_extent)
+        
+        draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0),duration=1)
+
+        return carla.BoundingBox(bbox.location, new_bbox_extent)
+
+
     def _our_vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
         """
         Method to check if there is a vehicle in front of the agent blocking its path.
@@ -644,7 +687,6 @@ class BasicAgent(object):
         # l'idea è verficiare dove voglio andare e dove si trova il vehicle, se si trova sulla nostra corsia e strada. Quello che succede è valutare la direzione e la posizione del vehicle.
 
         for target_vehicle in vehicle_list:
-            draw_bbox(self._world, target_vehicle.bounding_box,target_vehicle.get_transform().rotation)
             # per ogni vehicle della lista
             print("veicolo: ",target_vehicle)
             target_transform = target_vehicle.get_transform()
@@ -716,22 +758,29 @@ class BasicAgent(object):
                     return (False, None, -1)
                 ego_polygon = Polygon(route_bb)
 
-                # Compare the two polygons, per tutti gli obj passati in ingresso, se mi trovo in intersection faccio questa valuazione. Se sono io quello che analizzo o è troppo distanet nn lo cago. Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
-                # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
+                # Compare the two polygons, per tutti gli obj passati in ingresso, se mi trovo in intersection faccio questa valuazione. 
+                # Se sono io quello che analizzo o è troppo distanet nn lo cago. 
+                # Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
+                # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. 
+                # Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
                 for target_vehicle in vehicle_list:
-                    target_extent = target_vehicle.bounding_box.extent.x
                     if target_vehicle.id == self._vehicle.id:
                         continue
                     if ego_location.distance(target_vehicle.get_location()) > max_distance:
                         continue
 
-                    target_bb = target_vehicle.bounding_box
+                    target_bb = self.allunga_bounding_box(target_vehicle)
+                    
                     target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform())
                     target_list = [[v.x, v.y, v.z] for v in target_vertices]
                     target_polygon = Polygon(target_list)
 
                     if ego_polygon.intersects(target_polygon):
-                        return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+                        print('Colpisco boundingBox')
+                        input()
+                        #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+                        return (True, target_vehicle, 1.5)
+
 
                 return (False, None, -1)
 
@@ -812,46 +861,4 @@ class BasicAgent(object):
             plan.append((next_wp, RoadOption.LANEFOLLOW))
 
         return plan
-
-    def lengthen_bbox_along_x_axis(vehicle, alpha):
-        """
-        Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
-
-        Args:
-            vehicle: oggetto "Actor" rappresentante il veicolo
-            alpha: fattore di allungamento del bounding box lungo l'asse X
-
-        Returns:
-            BoundingBox: il bbox aggiornato
-        """
-
-        # ottieni il bounding box del veicolo
-        bbox = vehicle.bounding_box
-        bbox_extent = bbox.extent
-
-        # ottieni il forward vector del veicolo
-        forward_vector = vehicle.get_transform().get_forward_vector()
-
-        # ottieni la velocità del veicolo
-        velocity = vehicle.get_velocity()
-
-
-        # ottieni la velocità del veicolo
-        factor = alpha * forward_vector.x * velocity
-        
-        print("BBOX: fattore moltiplicativo ", factor)
-        
-        if factor < 1:
-            
-            return bbox
-
-        # calcola la quantità di spostamento lungo l'asse X
-        x_offset = bbox_extent.x * factor
-
-
-        # calcola le nuove dimensioni del bounding box
-        new_bbox_extent = carla.Vector3D(x=bbox_extent.x + x_offset, y=bbox_extent.y, z=bbox_extent.z)
-
-        return carla.BoundingBox(bbox.location, new_bbox_extent)
-
 

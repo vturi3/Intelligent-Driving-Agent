@@ -16,7 +16,7 @@ from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
 import operator
 
-from misc import get_speed, positive, is_within_distance, compute_distance
+from misc import get_speed, positive, is_within_distance, compute_distance,draw_bbox
 
 class BehaviorAgent(BasicAgent):
     """
@@ -338,7 +338,14 @@ class BehaviorAgent(BasicAgent):
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
         bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
         ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
-        # vehicle_list = self._world.get_actors().filter("*vehicle*")
+        
+        
+        vehicle_list = self._world.get_actors().filter("*vehicle*")
+        def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
+        vehicle_list_red = [w for w in vehicle_list if dist(w) < 30]
+
+        # for actor_snapshot in vehicle_list_red:
+        #     draw_bbox(self._world, actor_snapshot)
 
         # # usato x verificare logica del soprasso, da rimuovere
         # for actor in vehicle_list:
@@ -347,7 +354,6 @@ class BehaviorAgent(BasicAgent):
         #             continue
         #         if not('role_name' in actor.attributes and actor.attributes['role_name'] == 'hero' and actor.attributes['special_type'] != 'emergency'):
         #             actor.destroy() 
-
 
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.traffic_light_manager():
