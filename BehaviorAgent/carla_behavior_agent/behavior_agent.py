@@ -353,6 +353,7 @@ class BehaviorAgent(BasicAgent):
             return self.emergency_stop()
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.stop_sign_manager():
+            print("sto in stop_sign")
             return self.emergency_stop()
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
         condToEnter = len([x for x in ego_vertexs_lane_id if x != self._before_surpass_lane_id]) > 0

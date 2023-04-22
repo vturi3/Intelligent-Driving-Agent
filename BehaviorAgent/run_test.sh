@@ -11,7 +11,7 @@ export CARLA_TRAFFIC_MANAGER_PORT=8000
 export CHECKPOINT_ENDPOINT=/workspace/team_code/AVD_Project/BehaviorAgent/results/simulation_results.json
 export DEBUG_CHECKPOINT_ENDPOINT=/workspace/team_code/AVD_Project/BehaviorAgent/results/live_results.txt
 export RESUME=0
-export TIMEOUT=60
+export TIMEOUT=120
 
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --routes=${ROUTES} \
