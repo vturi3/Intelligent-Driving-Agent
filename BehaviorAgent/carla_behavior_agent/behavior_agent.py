@@ -17,7 +17,8 @@ from behavior_types import Cautious, Aggressive, Normal
 import operator
 from local_planner import MyWaypoint
 
-from misc import get_speed, positive, is_within_distance, compute_distance
+
+from misc import get_speed, positive, is_within_distance, compute_distance, draw_bbox
 
 class BehaviorAgent(BasicAgent):
     """
@@ -544,24 +545,28 @@ class BehaviorAgent(BasicAgent):
             # input()
             self._direction = RoadOption.CHANGELANERIGHT
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        self._direction = last_dir
+        
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             input()
         if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
-            input()
+            
             #self._my_flag = True
             self._before_surpass_lane_id = ego_vehicle_wp.lane_id
             #self.help_sorpassing(ego_vehicle_wp,'left')
             self._local_planner._change_line = "shifting"
             self._local_planner.delta = self.meters_shifting(obj_to_s)
+            print(self._local_planner.delta)
             self._local_planner.dir = dir
             self._local_planner.set_speed(80) # da cambiare
             print('sto superando')
+            self._direction = last_dir
+            input()
             return True
         else:
             self._surpassing_biker = False
+            self._direction = last_dir
             print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
         return False
 
@@ -637,27 +642,40 @@ class BehaviorAgent(BasicAgent):
             target_wpt.transform.location.x - corresponding_t_wpt.transform.location.x,
             target_wpt.transform.location.y - corresponding_t_wpt.transform.location.y,
             target_wpt.transform.location.z - corresponding_t_wpt.transform.location.z])
+        print("corresponding_t_wpt: ",corresponding_t_wpt,"target_transform.location: ",target_transform.location,"target_wpt: ", target_wpt,"np.linalg.norm(diff_lane): ", np.linalg.norm(diff_lane))
         #ottenere tutti i vertici del target vehicle target
-        target_bb = target_vehicle.bounding_box
-        target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform()) 
+        # # Otteniamo i vertici del bounding box in coordinate locali
+        target_bb = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+        print("target_bb[0]:", target_bb[0])
         distances = {} 
-        for vertex in target_vertices:
+        draw_bbox(self._world, target_vehicle)
+        for vertex in target_bb:
+            loc= carla.Location(vertex.x,vertex.y,vertex.z)
+            #carla.DebugHelper.draw_point(loc,0.5)
             #obtain the corresponding waypoint
-            vertex_waypoint = MyWaypoint(carla.Location(vertex), target_wpt.transform.rotation)
             #calcoliamo la differenza di ciascun vertice dal target left
             distances[vertex] = (np.linalg.norm(np.array([
-                vertex_waypoint.transform.location.x - corresponding_t_wpt.transform.location.x,
-                vertex_waypoint.transform.location.y - corresponding_t_wpt.transform.location.y,
-                vertex_waypoint.transform.location.z - corresponding_t_wpt.transform.location.z])))
+                vertex.x - corresponding_t_wpt.transform.location.x,
+                vertex.y - corresponding_t_wpt.transform.location.y,
+                0])))
         #obtain the vertex associated with the max distance
         print("distances: ",distances)
         max_vertex = min(distances, key = lambda k: distances[k])
         print("max_vertex: ",max_vertex)
+        input()
         #compute the distance between max_vertex and the target_wpt
         diff_points = np.array([
-            target_wpt.transform.location.x - max_vertex.transform.location.x,
-            target_wpt.transform.location.y - max_vertex.transform.location.y,
-            target_wpt.transform.location.z - max_vertex.transform.location.z])
+            target_transform.location.x - max_vertex.x,
+            target_transform.location.y - max_vertex.y,
+            target_transform.location.z - max_vertex.z])
         dot_product = np.dot(diff_points,diff_lane)
+        print("diff_points: ",diff_points, "max_vertex: ",max_vertex)
+        ego_vehicle_loc = self._vehicle.get_location()
+        ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
         how_much_move = dot_product - np.linalg.norm(diff_lane)/2
-        return how_much_move
+        print("how_much_move: ",how_much_move, "dot_product: ", dot_product,"np.linalg.norm(diff_lane)/2:",np.linalg.norm(diff_lane)/2 )
+        input()
+        if ego_vehicle_wp.lane_id != target_wpt.lane_id:
+            return how_much_move
+        else:
+            return np.linalg.norm(diff_lane) - how_much_move
