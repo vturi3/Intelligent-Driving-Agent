@@ -381,7 +381,11 @@ class BehaviorAgent(BasicAgent):
         
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
-        vehicle_list_red = [w for w in vehicle_list if dist(w) < 30]
+        # vehicle_list_red = [w for w in vehicle_list if dist(w) < 30]
+
+        # for act in vehicle_list_red:
+        #     draw_bbox(self._world, act)
+
 
         # for actor_snapshot in vehicle_list_red:
         #     draw_bbox(self._world, actor_snapshot)
