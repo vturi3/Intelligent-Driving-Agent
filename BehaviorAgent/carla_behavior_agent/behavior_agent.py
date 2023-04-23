@@ -15,14 +15,10 @@ from basic_agent import BasicAgent
 from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
 import operator
-<<<<<<< HEAD
 from local_planner import MyWaypoint
 
 
 from misc import get_speed, positive, is_within_distance, compute_distance, draw_bbox
-=======
-from misc import get_speed, positive, is_within_distance, compute_distance
->>>>>>> 99393a4fe746004022b9c525d74eb9aab624fe3b
 
 class BehaviorAgent(BasicAgent):
     """
