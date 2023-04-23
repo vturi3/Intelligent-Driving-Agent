@@ -53,6 +53,7 @@ class BasicAgent(object):
             self._map = self._world.get_map()
         self._last_traffic_light = None
         self._last_time_stop_sign = None
+        self._last_stop_signid = None
 
         self._surpassing_police = False
         self._surpassing_biker = False
@@ -343,6 +344,7 @@ class BasicAgent(object):
         # qua verifico se mi sono gia fermato allo step precedete.
         if self._last_time_stop_sign:
             # qua devo verificare se posso andare avanti ritornando quindi un vuoto o eventualmente un altro !
+            print('sono fermo da ',self._last_time_stop_sign ,'e sono', self._world.get_snapshot().timestamp.elapsed_seconds)
 
             if self._world.get_snapshot().timestamp.elapsed_seconds - self._last_time_stop_sign >= 3:
                 self._last_time_stop_sign = None
@@ -378,8 +380,9 @@ class BasicAgent(object):
             if dot_ve_wp < 0:
                 continue
 
-            if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
+            if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]) and self._last_stop_signid != stop_sign.id:
                 self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
+                self._last_stop_signid = stop_sign.id
                 return (True, stop_sign)
 
         return (False, None)

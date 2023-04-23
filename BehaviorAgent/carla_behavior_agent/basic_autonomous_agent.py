@@ -66,6 +66,13 @@ class MyTeamAgent(AutonomousAgent):
         ]
         """
         return self.configs["sensors"]
+    
+    def set_global_plan(self, global_plan_gps, global_plan_world_coord):
+        """
+        Set the plan (route) for the agent
+        """
+        self._global_plan_world_coord = global_plan_world_coord
+        self._global_plan = global_plan_gps
 
     def run_step(self, input_data, timestamp):
         """
@@ -84,13 +91,7 @@ class MyTeamAgent(AutonomousAgent):
             
             self._agent = BehaviorAgent(hero_actor, opt_dict=self.configs)
 
-            plan = []
-            prev_wp = None
-            for transform, _ in self._global_plan_world_coord:
-                wp = CarlaDataProvider.get_map().get_waypoint(transform.location)
-                if prev_wp:
-                    plan.extend(self._agent.trace_route(prev_wp, wp))
-                prev_wp = wp
+            plan = [(CarlaDataProvider.get_map().get_waypoint(x[0].location),x[1]) for x in self._global_plan_world_coord]
 
             self._agent.set_global_plan(plan)
 

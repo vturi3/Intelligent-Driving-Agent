@@ -15,10 +15,14 @@ from basic_agent import BasicAgent
 from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
 import operator
+<<<<<<< HEAD
 from local_planner import MyWaypoint
 
 
 from misc import get_speed, positive, is_within_distance, compute_distance, draw_bbox
+=======
+from misc import get_speed, positive, is_within_distance, compute_distance
+>>>>>>> 99393a4fe746004022b9c525d74eb9aab624fe3b
 
 class BehaviorAgent(BasicAgent):
     """
@@ -356,6 +360,7 @@ class BehaviorAgent(BasicAgent):
             return self.emergency_stop()
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.stop_sign_manager():
+            print("sto in stop_sign")
             return self.emergency_stop()
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
         condToNotEnter = True
@@ -463,18 +468,26 @@ class BehaviorAgent(BasicAgent):
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
         if obstacle_dict["static_obj"][0]:
-            static_obj_type = obstacle_dict["static_obj"][1].attributes.get('object_type')
-            stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
-            if stop_cond:
-                print("STATIC OBJ la distance dall'obj è: ", obstacle_dict["static_obj"][2])
-                delta_v =  self._speed - get_speed(obstacle_dict["static_obj"][1])
-                if delta_v < 0:
-                    delta_v = 0
-                # Emergency brake if the car is very close.
-                if obstacle_dict["static_obj"][2] < self._behavior.braking_distance/4 + delta_v * 0.3:
-                    return self.emergency_stop()
-                elif obstacle_dict["static_obj"][2] < self._behavior.braking_distance + delta_v * 0.3:
-                    return self.controlled_stop(obstacle_dict["static_obj"][1], obstacle_dict["static_obj"][2])
+            #static_obj_type = static_obj.attributes.get('object_type')
+            #stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
+            static_obj = obstacle_dict["static_obj"][1]
+            obs_distance = obstacle_dict["static_obj"][2]
+            stop_cond = static_obj.bounding_box.extent.z >= 0.25
+            static_obj_type = getattr(static_obj,'object_type',None)
+            print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
+            print("static object: ", static_obj, "type: ", static_obj_type)
+            if static_obj_type != None:
+                if stop_cond:
+                    print("static object più alto di mezzo metro, mi fermo")
+                    print("STATIC OBJ la distance dall'obj è: ", obs_distance)
+                    delta_v =  self._speed - get_speed(static_obj)
+                    if delta_v < 0:
+                        delta_v = 0
+                    # Emergency brake if the car is very close.
+                    if obs_distance < self._behavior.braking_distance/4 + delta_v * 0.3:
+                        return self.emergency_stop()
+                    elif obs_distance < self._behavior.braking_distance + delta_v * 0.3:
+                        return self.controlled_stop(static_obj, obs_distance)
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
