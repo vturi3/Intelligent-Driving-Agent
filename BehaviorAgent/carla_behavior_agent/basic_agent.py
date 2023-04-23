@@ -653,10 +653,12 @@ class BasicAgent(object):
             # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
             if not ego_wpt.is_junction or not target_wpt.is_junction:
                 print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                next_lane = ego_wpt.lane_id
                 if self._direction == RoadOption.CHANGELANELEFT:
                     next_lane = ego_wpt.get_left_lane().lane_id
                 elif self._direction == RoadOption.CHANGELANERIGHT:
                     next_lane = ego_wpt.get_right_lane().lane_id
+                
                 if target_wpt.lane_id * ego_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
                     print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
                     cond = 2*lane_offset*ego_wpt.lane_id

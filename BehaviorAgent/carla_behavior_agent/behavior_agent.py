@@ -423,7 +423,7 @@ class BehaviorAgent(BasicAgent):
             biker_vehicle_loc = obstacle_dict["biker"][1].get_location()
             biker_vehicle_wp = self._map.get_waypoint(biker_vehicle_loc)
             print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
-            #input()
+            ##input()
             if biker_vehicle_wp.lane_id != self._before_surpass_lane_id:
 
                 delta_v =  self._speed - get_speed(obstacle_dict["biker"][1])
@@ -431,7 +431,7 @@ class BehaviorAgent(BasicAgent):
                     delta_v = 0
                 print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_biker:
-                    #input()
+                    ##input()
                 # Emergency brake if the car is very close.
                 if obstacle_dict["biker"][2] < self._behavior.braking_distance/4 + delta_v * 0.2:
                     return self.emergency_stop()
@@ -450,7 +450,7 @@ class BehaviorAgent(BasicAgent):
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_biker:
-                    #input()
+                    ##input()
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
                 if delta_v < 0:
                     delta_v = 0
@@ -552,13 +552,13 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANELEFT
         elif dir == "right":
             # print("sorpasso a destra")
-            # input()
+            # #input()
             self._direction = RoadOption.CHANGELANERIGHT
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
-            input()
+            #input()
         if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
             
@@ -573,7 +573,7 @@ class BehaviorAgent(BasicAgent):
             self.surpass_vehicle = obj_to_s
             print('sto superando')
             self._direction = last_dir
-            input()
+            #input()
             return True
         else:
             self._surpassing_biker = False
@@ -591,10 +591,10 @@ class BehaviorAgent(BasicAgent):
         self._direction = last_dir
         if self._local_planner._change_line != "None":
             print("non mi rientrare com_vehicle: ",com_vehicle)
-            input()
+            #input()
         if not com_vehicle_state:
             print('STO PER RIENTRARE IN CORSIA')
-            #input()
+            ##input()
             self.surpass_vehicle = None
             self._local_planner._change_line = "None"
             self._local_planner.delta = 0
@@ -608,7 +608,7 @@ class BehaviorAgent(BasicAgent):
         # logica per cominciare il sorpasso 
         if obj_dict["biker"][0] and obj_dict["biker"][2]<10 and get_speed(obj_dict["biker"][1]) <= 20 and not self._surpassing_biker:
             if self.start_surpassing(obj_dict["biker"][1], waypoint, "left"):
-                input()
+                #input()
                 return True
         valori = []
         for valore in obj_dict.values():
@@ -617,7 +617,7 @@ class BehaviorAgent(BasicAgent):
         ordered_objs = self.order_by_dist(valori, waypoint, 45, True)
         if len(ordered_objs) > 0:
             print("state 1")
-            #input()
+            ##input()
             bb_coords = ordered_objs[0].bounding_box.get_world_vertices(ordered_objs[0].get_transform())
             obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
             int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
@@ -625,18 +625,18 @@ class BehaviorAgent(BasicAgent):
             #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
             if len(int_list)>0 and len(not_my_lane_list)> 0:
                 print("state 2")
-                # input()
+                # #input()
                 print("len(int_list): ", len(int_list), "len(not_my_lane_list): ", len(not_my_lane_list))
                 if not_my_lane_list[0] > waypoint.lane_id:
                     print("not_my_lane_list[0]: ", not_my_lane_list[0], "waypoint.lane_id: ", waypoint.lane_id)
                     if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                         print("state 3")
-                        input()
+                        #input()
                         return True
                 else:
                     if self.start_surpassing(ordered_objs[0], waypoint, "right"): 
                         print("state 3.1")
-                        input()
+                        #input()
                         return True
         return False
 
@@ -676,7 +676,7 @@ class BehaviorAgent(BasicAgent):
         print("distances: ",distances)
         max_vertex = min(distances, key = lambda k: distances[k])
         print("max_vertex: ",max_vertex)
-        input()
+        #input()
         #compute the distance between max_vertex and the target_wpt
         diff_points = np.array([
             target_transform.location.x - max_vertex[0],
@@ -688,7 +688,7 @@ class BehaviorAgent(BasicAgent):
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
         how_much_move = dot_product - np.linalg.norm(diff_lane)/2
         print("how_much_move: ",how_much_move, "dot_product: ", dot_product,"np.linalg.norm(diff_lane)/2:",np.linalg.norm(diff_lane)/2 )
-        input()
+        #input()
         if ego_vehicle_wp.lane_id != target_wpt.lane_id:
             return how_much_move
         else:
