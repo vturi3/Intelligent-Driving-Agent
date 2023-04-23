@@ -358,14 +358,15 @@ class BehaviorAgent(BasicAgent):
         if self.stop_sign_manager():
             return self.emergency_stop()
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
-        condToEnter = len([x for x in ego_vertexs_lane_id if x != self._before_surpass_lane_id]) > 0
-        condForCheck = ego_vehicle_wp.lane_id != self._before_surpass_lane_id
-        print("self._surpassing_biker: ",self._surpassing_biker,"self._before_surpass_lane_id: ",self._before_surpass_lane_id ,"ego_vertexs_lane_id: ", ego_vertexs_lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
-        c = self._surpassing_biker and self._before_surpass_lane_id != None and condToEnter
-        print("c: ",c)
-        if self._surpassing_biker and self._before_surpass_lane_id != None and condToEnter:
+        condToNotEnter = True
+        if self._surpassing_biker and self.surpass_vehicle != None:
+            condToNotEnter, v, d = self._our_vehicle_obstacle_detected(
+                            [self.surpass_vehicle], max(
+                                self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+
+        if self._surpassing_biker and self._before_surpass_lane_id != None and not condToNotEnter:
             print("end_surpassing(ego_vehicle_wp)")
-            if self.end_surpassing(ego_vehicle_wp, condForCheck):
+            if self.end_surpassing(ego_vehicle_wp):
                 return self._local_planner.run_step(debug=debug)
 
         # 2.1: Pedestrian avoidance behaviors, verifico se ci sono pedoni che possono influenzare la guida
@@ -560,6 +561,7 @@ class BehaviorAgent(BasicAgent):
             print(self._local_planner.delta)
             self._local_planner.dir = dir
             self._local_planner.set_speed(80) # da cambiare
+            self.surpass_vehicle = obj_to_s
             print('sto superando')
             self._direction = last_dir
             input()
@@ -570,7 +572,7 @@ class BehaviorAgent(BasicAgent):
             print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
         return False
 
-    def end_surpassing(self, ego_vehicle_wp, check_if_left):
+    def end_surpassing(self, ego_vehicle_wp):
         last_dir = self._direction
         if self._local_planner._change_line=="left":
             self._direction = RoadOption.CHANGELANERIGHT
@@ -584,6 +586,7 @@ class BehaviorAgent(BasicAgent):
         if not com_vehicle_state:
             print('STO PER RIENTRARE IN CORSIA')
             #input()
+            self.surpass_vehicle = None
             self._local_planner._change_line = "None"
             self._local_planner.delta = 0
             self._local_planner.dir = "left"
@@ -596,6 +599,7 @@ class BehaviorAgent(BasicAgent):
         # logica per cominciare il sorpasso 
         if obj_dict["biker"][0] and obj_dict["biker"][2]<10 and get_speed(obj_dict["biker"][1]) <= 20 and not self._surpassing_biker:
             if self.start_surpassing(obj_dict["biker"][1], waypoint, "left"):
+                input()
                 return True
         valori = []
         for valore in obj_dict.values():
@@ -645,18 +649,19 @@ class BehaviorAgent(BasicAgent):
         print("corresponding_t_wpt: ",corresponding_t_wpt,"target_transform.location: ",target_transform.location,"target_wpt: ", target_wpt,"np.linalg.norm(diff_lane): ", np.linalg.norm(diff_lane))
         #ottenere tutti i vertici del target vehicle target
         # # Otteniamo i vertici del bounding box in coordinate locali
-        target_bb = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+        target_bb = self.get_bounding_box_corners(target_vehicle)
+        #target_bb = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
         print("target_bb[0]:", target_bb[0])
         distances = {} 
         draw_bbox(self._world, target_vehicle)
         for vertex in target_bb:
-            loc= carla.Location(vertex.x,vertex.y,vertex.z)
+            #loc= carla.Location(vertex.x,vertex.y,vertex.z)
             #carla.DebugHelper.draw_point(loc,0.5)
             #obtain the corresponding waypoint
             #calcoliamo la differenza di ciascun vertice dal target left
-            distances[vertex] = (np.linalg.norm(np.array([
-                vertex.x - corresponding_t_wpt.transform.location.x,
-                vertex.y - corresponding_t_wpt.transform.location.y,
+            distances[tuple(vertex)] = (np.linalg.norm(np.array([
+                vertex[0] - corresponding_t_wpt.transform.location.x,
+                vertex[1] - corresponding_t_wpt.transform.location.y,
                 0])))
         #obtain the vertex associated with the max distance
         print("distances: ",distances)
@@ -665,9 +670,9 @@ class BehaviorAgent(BasicAgent):
         input()
         #compute the distance between max_vertex and the target_wpt
         diff_points = np.array([
-            target_transform.location.x - max_vertex.x,
-            target_transform.location.y - max_vertex.y,
-            target_transform.location.z - max_vertex.z])
+            target_transform.location.x - max_vertex[0],
+            target_transform.location.y - max_vertex[1],
+            target_transform.location.z - max_vertex[2]])
         dot_product = np.dot(diff_points,diff_lane)
         print("diff_points: ",diff_points, "max_vertex: ",max_vertex)
         ego_vehicle_loc = self._vehicle.get_location()
@@ -679,3 +684,46 @@ class BehaviorAgent(BasicAgent):
             return how_much_move
         else:
             return np.linalg.norm(diff_lane) - how_much_move
+        
+
+
+    def get_bounding_box_corners(self, actor):
+        """
+        Restituisce le coordinate dei vertici del bounding box di un attore in CARLA.
+        :param actor: l'attore di cui si vogliono trovare le coordinate del bounding box.
+        :return: una lista di numpy array che rappresentano i vertici del bounding box.
+        """
+        bbox = actor.bounding_box
+        trans = actor.get_transform()
+        location = trans.location
+        yaw = np.deg2rad(trans.rotation.yaw)
+        print("yaw: ", yaw)
+        # Calcola le dimensioni del bounding box (divise per due)
+        extent_x = bbox.extent.x if bbox.extent.x != 0 else 1
+        extent_y = bbox.extent.y if bbox.extent.y != 0 else 1
+        extent_z = bbox.extent.z if bbox.extent.z != 0 else 1
+        print("extent_x: ",extent_x,"extent_y: ",extent_y,"extent_z: ",extent_z)
+        # Calcola le coordinate del bounding box rispetto al centro del veicolo
+        bounding_box = np.array([
+            [extent_x, extent_y, 0],
+            [-extent_x, extent_y, 0],
+            [-extent_x, -extent_y, 0],
+            [extent_x, -extent_y, 0],
+            [extent_x, extent_y, 2 * extent_z],
+            [-extent_x, extent_y, 2 * extent_z],
+            [-extent_x, -extent_y, 2 * extent_z],
+            [extent_x, -extent_y, 2 * extent_z]])
+
+        # Ruota e trasla il bounding box in base all'orientamento e alla posizione dell'attore
+        rotation = np.array([
+            [np.cos(yaw), -np.sin(yaw), 0],
+            [np.sin(yaw), np.cos(yaw), 0],
+            [0, 0, 1]])
+        print("rotation: ", rotation)
+        transformed_box = []
+        for point in bounding_box:
+            transformed_point = np.dot(rotation, point)
+            transformed_point += np.array([location.x, location.y, location.z])
+            transformed_box.append(transformed_point)
+
+        return transformed_box
