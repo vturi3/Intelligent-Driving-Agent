@@ -103,8 +103,8 @@ class BehaviorAgent(BasicAgent):
         """
         actor_list = self._world.get_actors()
         stop_list = actor_list.filter("*stop*")
-        affected, _ = self._affected_by_stop_sign(stop_list)
-        return affected
+        affected, _,dist_from_stop = self._affected_by_stop_sign(stop_list)
+        return affected,dist_from_stop
 
     def _tailgating(self, waypoint, vehicle_list):
         """
@@ -177,6 +177,45 @@ class BehaviorAgent(BasicAgent):
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
+                vehicle_list, max(
+                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+            # tiene in considerazione anche
+            # Check for tailgating
+            if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
+                    and not waypoint.is_junction and self._speed > 10 \
+                    and self._behavior.tailgate_counter == 0: # se sto gia in quello stato non modifico. 
+                self._tailgating(waypoint, vehicle_list)
+
+        # ci sono scenari dove siamo parcheggiati e ci dobbiamo inserire, passa un vehicle della polizia e la baseline lo prende sempre o comunque x evitarlo e prende vehicle dopo.
+
+        return vehicle_state, vehicle, distance
+
+    def gestione_incrocio(self, waypoint):
+        """
+        This module is in charge of warning in case of a collision
+        and managing possible tailgating chances.
+
+            :param location: current location of the agent
+            :param waypoint: current waypoint of the agent
+            :return vehicle_state: True if there is a vehicle nearby, False if not
+            :return vehicle: nearby vehicle
+            :return distance: distance to nearby vehicle
+        """
+
+        # logica è uguale a quella del pedone.
+        vehicle_list = self._world.get_actors().filter("*vehicle*")
+        vehicle_list = self.order_by_dist(vehicle_list, waypoint, 45, True)
+
+        if self._direction == RoadOption.CHANGELANELEFT:
+            vehicle_state, vehicle, distance = self.gestsione_incroci(
+                vehicle_list, max(
+                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+        elif self._direction == RoadOption.CHANGELANERIGHT:
+            vehicle_state, vehicle, distance = self.gestsione_incroci(
+                vehicle_list, max(
+                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+        else:
+            vehicle_state, vehicle, distance = self.gestsione_incroci(
                 vehicle_list, max(
                     self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
             # tiene in considerazione anche
@@ -358,10 +397,14 @@ class BehaviorAgent(BasicAgent):
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         if self.traffic_light_manager():
             return self.emergency_stop()
+        
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
-        if self.stop_sign_manager():
+        affected_by_stop,dist_from_stop = self.stop_sign_manager()
+        if affected_by_stop:
             print("sto in stop_sign")
-            return self.emergency_stop()
+            return self.controlled_stop(distance=dist_from_stop)
+        
+
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
         condToEnter = len([x for x in ego_vertexs_lane_id if x != self._before_surpass_lane_id]) > 0
         condForCheck = ego_vehicle_wp.lane_id != self._before_surpass_lane_id
@@ -482,12 +525,24 @@ class BehaviorAgent(BasicAgent):
 
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
-            print("JUNCTION STATE")
-            target_speed = min([
-                    self._behavior.max_speed,
-                    self._speed_limit - 5])
-            self._local_planner.set_speed(target_speed)
-            return self._local_planner.run_step(debug=debug)
+            vehicle_state, vehicle, v_distance = self.gestione_incrocio(ego_vehicle_wp)
+        # stesso principio del pedone.
+        if vehicle_state:
+            print('Junction State:')
+            input()
+            vehicle_vehicle_loc = vehicle.get_location()
+            vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id:
+                delta_v =  self._speed - get_speed(vehicle)
+                if delta_v < 0:
+                    delta_v = 0
+                # Emergency brake if the car is very close.
+                if v_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+                    return self.emergency_stop()
+                elif v_distance < self._behavior.braking_distance + delta_v * 0.2:
+                    return self.controlled_stop(vehicle, v_distance)
+                else:
+                    return self.car_following_manager(vehicle, v_distance)
 
         # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
         print("NORMAL BEHAVIOUR")
@@ -511,15 +566,14 @@ class BehaviorAgent(BasicAgent):
 
             :param speed (carl.VehicleControl): control to be modified
         """
-        control = carla.VehicleControl()
-        control.throttle = 0.0
-        control.brake = self._max_brake
-        control.hand_brake = False 
+        control = self._local_planner.run_step_only_lateral()
         # per le derapate a True
         return control
 
-    def controlled_stop(self, vehicle, distance):
-        vehicle_speed = get_speed(vehicle)
+    def controlled_stop(self, vehicle=None, distance=0.0):
+        vehicle_speed = 0.0
+        if vehicle != None:
+            vehicle_speed = get_speed(vehicle)
         delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
         control = self.emergency_stop()
