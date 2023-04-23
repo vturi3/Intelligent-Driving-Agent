@@ -533,7 +533,6 @@ class BehaviorAgent(BasicAgent):
         # stesso principio del pedone.
         if vehicle_state:
             print('Junction State:')
-            input()
             vehicle_vehicle_loc = vehicle.get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
             if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id:
