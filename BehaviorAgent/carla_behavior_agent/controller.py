@@ -51,6 +51,41 @@ class VehicleController():
         self.past_steering = self._vehicle.get_control().steer
         self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
         self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
+    
+    def run_step_only_lateral(self, waypoint):
+        """
+        Execute one step of control invoking both lateral and longitudinal
+        PID controllers to reach a target waypoint
+        at a given target_speed.
+
+            :param target_speed: desired vehicle speed
+            :param waypoint: target location encoded as a waypoint
+            :return: distance (in meters) to the waypoint
+        """
+
+        current_steering = self._lat_controller.run_step(waypoint)
+
+        control = carla.VehicleControl()
+        control.throttle = 0.0
+        control.brake = 0.5
+
+        # Steering regulation: changes cannot happen abruptly, can't steer too much.
+        if current_steering > self.past_steering + 0.1:
+            current_steering = self.past_steering + 0.1
+        elif current_steering < self.past_steering - 0.1:
+            current_steering = self.past_steering - 0.1
+
+        if current_steering >= 0:
+            steering = min(self.max_steer, current_steering)
+        else:
+            steering = max(-self.max_steer, current_steering)
+
+        control.steer = steering
+        control.hand_brake = False
+        control.manual_gear_shift = False
+        self.past_steering = steering
+
+        return control
 
 
     def run_step(self, target_speed, waypoint):
