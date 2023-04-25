@@ -59,6 +59,7 @@ class BasicAgent(object):
         self._surpassing_police = False
         self._surpassing_biker = False
         self._surpassing_obstacle = False
+        self._surpassing_car = False
 
         # Base parameters
         self._ignore_traffic_lights = False
@@ -341,7 +342,7 @@ class BasicAgent(object):
             stop_list = self._world.get_actors().filter("*stop*")
 
         if not max_distance:
-            max_distance = self._base_stop_threshold
+            max_distance = self._base_stop_threshold*2
         # qua verifico se mi sono gia fermato allo step precedete.
         if self._last_time_stop_sign:
             # qua devo verificare se posso andare avanti ritornando quindi un vuoto o eventualmente un altro !

@@ -166,7 +166,7 @@ class BehaviorAgent(BasicAgent):
 
         # logica è uguale a quella del pedone.
         vehicle_list = self._world.get_actors().filter("*vehicle*")
-        vehicle_list = self.order_by_dist(vehicle_list, waypoint, 45, True)
+        vehicle_list = self.order_by_dist(vehicle_list, waypoint, 80, True)
 
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
@@ -368,7 +368,7 @@ class BehaviorAgent(BasicAgent):
         """
 
         self._update_information()
-        if self._my_flag:
+        if False:
             input()
         control = None
         if self._behavior.tailgate_counter > 0:
@@ -382,6 +382,9 @@ class BehaviorAgent(BasicAgent):
         
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
+        # for w in vehicle_list:
+        #     print(w.get_light_state())
+        # input()
         # vehicle_list_red = [w for w in vehicle_list if dist(w) < 30]
 
         # for act in vehicle_list_red:
@@ -417,7 +420,7 @@ class BehaviorAgent(BasicAgent):
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
 
-        if self._surpassing_biker and self._before_surpass_lane_id != None and not condToNotEnter:
+        if (self._surpassing_car or self._surpassing_biker) and self._before_surpass_lane_id != None and not condToNotEnter:
             print("end_surpassing(ego_vehicle_wp)")
             if self.end_surpassing(ego_vehicle_wp):
                 return self._local_planner.run_step(debug=debug)
@@ -427,6 +430,11 @@ class BehaviorAgent(BasicAgent):
         obstacle_dict["biker"] = list(self.bikers_avoid_manager(ego_vehicle_wp))
         obstacle_dict["vehicle"] = list(self.collision_and_car_avoid_manager(ego_vehicle_wp))
         obstacle_dict["static_obj"] = list(self.static_obstacle_avoid_manager(ego_vehicle_wp))
+
+        # print('obstacle_dict',obstacle_dict['vehicle'],obstacle_dict['vehicle'][1])
+        # if obstacle_dict['vehicle'][1] != None:
+        #     print(obstacle_dict['vehicle'][1].get_light_state())    
+        #     input()
 
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
         if obstacle_dict["walker"][0]:
@@ -501,6 +509,7 @@ class BehaviorAgent(BasicAgent):
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+                print("inoltre le sue luci sono ", obstacle_dict["vehicle"][1].get_light_state())
                 #if self._surpassing_biker:
                     ##input()
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
@@ -608,6 +617,7 @@ class BehaviorAgent(BasicAgent):
     
     def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
         self._surpassing_biker = True
+        self._surpassing_car = True
         last_dir = self._direction
         if dir == "left":
             self._direction = RoadOption.CHANGELANELEFT
@@ -622,7 +632,6 @@ class BehaviorAgent(BasicAgent):
             #input()
         if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
-            
             #self._my_flag = True
             self._before_surpass_lane_id = ego_vehicle_wp.lane_id
             #self.help_sorpassing(ego_vehicle_wp,'left')
@@ -638,6 +647,7 @@ class BehaviorAgent(BasicAgent):
             return True
         else:
             self._surpassing_biker = False
+            self._surpassing_car = False
             self._direction = last_dir
             print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
         return False
@@ -661,6 +671,7 @@ class BehaviorAgent(BasicAgent):
             self._local_planner.delta = 0
             self._local_planner.dir = "left"
             self._surpassing_biker = False
+            self._surpassing_car = False
             self._before_surpass_lane_id = None
             return True
         return False
@@ -669,6 +680,13 @@ class BehaviorAgent(BasicAgent):
         # logica per cominciare il sorpasso 
         if obj_dict["biker"][0] and obj_dict["biker"][2]<10 and get_speed(obj_dict["biker"][1]) <= 20 and not self._surpassing_biker:
             if self.start_surpassing(obj_dict["biker"][1], waypoint, "left"):
+                #input()
+                return True
+        print(obj_dict['vehicle'])
+        #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
+        if obj_dict['vehicle'][0] and obj_dict['vehicle'][2]<20 and obj_dict["vehicle"][1].get_light_state() in [1537,1539] \
+            and not self._surpassing_car:
+            if self.start_surpassing(obj_dict["vehicle"][1], waypoint, "left"):
                 #input()
                 return True
         valori = []
