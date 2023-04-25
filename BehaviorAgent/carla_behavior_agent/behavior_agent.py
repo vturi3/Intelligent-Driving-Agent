@@ -420,8 +420,9 @@ class BehaviorAgent(BasicAgent):
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
 
-        if (self._surpassing_car or self._surpassing_biker) and self._before_surpass_lane_id != None and not condToNotEnter:
+        if (self._surpassing_car or self._surpassing_biker or self._surpassing_obstacle) and self._before_surpass_lane_id != None and not condToNotEnter:
             print("end_surpassing(ego_vehicle_wp)")
+            #capire xke non entra qua dentro
             if self.end_surpassing(ego_vehicle_wp):
                 return self._local_planner.run_step(debug=debug)
 
@@ -431,10 +432,6 @@ class BehaviorAgent(BasicAgent):
         obstacle_dict["vehicle"] = list(self.collision_and_car_avoid_manager(ego_vehicle_wp))
         obstacle_dict["static_obj"] = list(self.static_obstacle_avoid_manager(ego_vehicle_wp))
 
-        # print('obstacle_dict',obstacle_dict['vehicle'],obstacle_dict['vehicle'][1])
-        # if obstacle_dict['vehicle'][1] != None:
-        #     print(obstacle_dict['vehicle'][1].get_light_state())    
-        #     input()
 
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
         if obstacle_dict["walker"][0]:
@@ -532,8 +529,8 @@ class BehaviorAgent(BasicAgent):
             stop_cond = static_obj.bounding_box.extent.z >= 0.25
             static_obj_type = getattr(static_obj,'object_type',None)
             print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
-            print("static object: ", static_obj, "type: ", static_obj_type)
-            if static_obj_type != None:
+            print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
+            if static_obj.type_id  != 'static.prop.mesh':
                 if stop_cond:
                     print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
@@ -618,6 +615,7 @@ class BehaviorAgent(BasicAgent):
     def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
         self._surpassing_biker = True
         self._surpassing_car = True
+        self._surpassing_obstacle = True
         last_dir = self._direction
         if dir == "left":
             self._direction = RoadOption.CHANGELANELEFT
@@ -648,6 +646,7 @@ class BehaviorAgent(BasicAgent):
         else:
             self._surpassing_biker = False
             self._surpassing_car = False
+            self._surpassing_obstacle = False
             self._direction = last_dir
             print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
         return False
@@ -672,6 +671,7 @@ class BehaviorAgent(BasicAgent):
             self._local_planner.dir = "left"
             self._surpassing_biker = False
             self._surpassing_car = False
+            self._surpassing_obstacle = False
             self._before_surpass_lane_id = None
             return True
         return False
@@ -687,6 +687,12 @@ class BehaviorAgent(BasicAgent):
         if obj_dict['vehicle'][0] and obj_dict['vehicle'][2]<20 and obj_dict["vehicle"][1].get_light_state() in [1537,1539] \
             and not self._surpassing_car:
             if self.start_surpassing(obj_dict["vehicle"][1], waypoint, "left"):
+                #input()
+                return True
+        #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
+        if obj_dict['static_obj'][0] and obj_dict['static_obj'][2]<20 and obj_dict["static_obj"][1].type_id in ['static.prop.trafficwarning'] \
+            and not self._surpassing_obstacle:
+            if self.start_surpassing(obj_dict["static_obj"][1], waypoint, "left"):
                 #input()
                 return True
         valori = []
