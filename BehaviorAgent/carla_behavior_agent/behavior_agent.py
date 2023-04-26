@@ -166,7 +166,7 @@ class BehaviorAgent(BasicAgent):
 
         # logica è uguale a quella del pedone.
         vehicle_list = self._world.get_actors().filter("*vehicle*")
-        vehicle_list = self.order_by_dist(vehicle_list, waypoint, 80, True)
+        vehicle_list, dists = self.order_by_dist(vehicle_list, waypoint, 80, True)
 
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
@@ -205,7 +205,7 @@ class BehaviorAgent(BasicAgent):
 
         # logica è uguale a quella del pedone.
         vehicle_list = self._world.get_actors().filter("*vehicle*")
-        vehicle_list = self.order_by_dist(vehicle_list, waypoint, 45, True)
+        vehicle_list, dists = self.order_by_dist(vehicle_list, waypoint, 45, True)
 
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self.gestsione_incroci(
@@ -243,7 +243,7 @@ class BehaviorAgent(BasicAgent):
         """
         # prendo i pedoni, calcolo le distanze tra pedone e dove ci troviamo, prendo solo <10 metri di distanza.
         walker_list = self._world.get_actors().filter("*walker.pedestrian*")
-        walker_list = self.order_by_dist(walker_list, waypoint, 45)
+        walker_list, dists = self.order_by_dist(walker_list, waypoint, 45)
 
         # vedo se siamo in collisione con pedone, magari distanza piccola però ci ha gia superato, a seconda delle posizioni e di cosa dobbiamo fare valutiamo in modo diverso la _vehicle_obstacle_detected (in realtà sarebbe obj), si può usare x qualsiasi cosa in carla, l'importante è passare la lista di obj in ingresso. verifico se sono in collisione con la lista di obj passati. Resistuisce se obj influenza la nostra guida, chi è e la distanza.
         if self._direction == RoadOption.CHANGELANELEFT:
@@ -274,7 +274,7 @@ class BehaviorAgent(BasicAgent):
         bikers_list += list(self._world.get_actors().filter("*vehicle.gazelle.omafiets*"))
         bikers_list += list(self._world.get_actors().filter("*vehicle.diamondback.century*"))
 
-        bikers_list = self.order_by_dist(bikers_list, waypoint, 45)
+        bikers_list, dists = self.order_by_dist(bikers_list, waypoint, 45)
 
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
@@ -289,7 +289,7 @@ class BehaviorAgent(BasicAgent):
         #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
         #filtrare tutt gli ostacoli statici
         static_obj_list = self._world.get_actors().filter("*static.prop*")
-        static_obj_list = self.order_by_dist(static_obj_list, waypoint, 45)
+        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, 45)
 
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
@@ -353,7 +353,7 @@ class BehaviorAgent(BasicAgent):
             static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist}
         #otteniamo ora la lista corrispondente ordinata per valore
         ordered_dict = dict(sorted(static_obj_dict.items(),key=operator.itemgetter(1)))
-        return list(ordered_dict.keys())
+        return (list(ordered_dict.keys()),list(ordered_dict.items()))
 
     def run_step(self, debug=False):
         """
@@ -415,12 +415,12 @@ class BehaviorAgent(BasicAgent):
 
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
         condToNotEnter = True
-        if self._surpassing_biker and self.surpass_vehicle != None:
+        if self._surpassing_obj and self.surpass_vehicle != None:
             condToNotEnter, v, d = self._our_vehicle_obstacle_detected(
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
 
-        if (self._surpassing_car or self._surpassing_biker or self._surpassing_obstacle) and self._before_surpass_lane_id != None and not condToNotEnter:
+        if (self._surpassing_obj) and self._before_surpass_lane_id != None and not condToNotEnter:
             print("end_surpassing(ego_vehicle_wp)")
             #capire xke non entra qua dentro
             if self.end_surpassing(ego_vehicle_wp):
@@ -482,12 +482,12 @@ class BehaviorAgent(BasicAgent):
             print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
             ##input()
             if biker_vehicle_wp.lane_id != self._before_surpass_lane_id:
-
+                # input()
                 delta_v =  self._speed - get_speed(obstacle_dict["biker"][1])
                 if delta_v < 0:
                     delta_v = 0
                 print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
-                #if self._surpassing_biker:
+                #if self._surpassing_obj:
                     ##input()
                 # Emergency brake if the car is very close.
                 if obstacle_dict["biker"][2] < self._behavior.braking_distance/4 + delta_v * 0.2:
@@ -507,8 +507,8 @@ class BehaviorAgent(BasicAgent):
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 print("inoltre le sue luci sono ", obstacle_dict["vehicle"][1].get_light_state())
-                #if self._surpassing_biker:
-                    ##input()
+                #if self._surpassing_obj:
+                # input()
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
                 if delta_v < 0:
                     delta_v = 0
@@ -564,10 +564,11 @@ class BehaviorAgent(BasicAgent):
 
         # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
         print("NORMAL BEHAVIOUR")
+        # input()
         target_speed = min([
             self._behavior.max_speed,
             self._speed_limit - self._behavior.speed_lim_dist])
-        if self._surpassing_biker:
+        if self._surpassing_obj:
             self._local_planner.set_speed(80)
         else:
             self._local_planner.set_speed(target_speed)
@@ -613,9 +614,7 @@ class BehaviorAgent(BasicAgent):
         return control
     
     def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
-        self._surpassing_biker = True
-        self._surpassing_car = True
-        self._surpassing_obstacle = True
+        self._surpassing_obj = True
         last_dir = self._direction
         if dir == "left":
             self._direction = RoadOption.CHANGELANELEFT
@@ -628,8 +627,9 @@ class BehaviorAgent(BasicAgent):
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
+        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>39.5):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
+            # input()
             #self._my_flag = True
             self._before_surpass_lane_id = ego_vehicle_wp.lane_id
             #self.help_sorpassing(ego_vehicle_wp,'left')
@@ -644,9 +644,7 @@ class BehaviorAgent(BasicAgent):
             #input()
             return True
         else:
-            self._surpassing_biker = False
-            self._surpassing_car = False
-            self._surpassing_obstacle = False
+            self._surpassing_obj = False
             self._direction = last_dir
             print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
         return False
@@ -669,46 +667,49 @@ class BehaviorAgent(BasicAgent):
             self._local_planner._change_line = "None"
             self._local_planner.delta = 0
             self._local_planner.dir = "left"
-            self._surpassing_biker = False
-            self._surpassing_car = False
-            self._surpassing_obstacle = False
+            self._surpassing_obj = False
             self._before_surpass_lane_id = None
             return True
         return False
             
     def obstacle_avoidance(self, obj_dict, waypoint, ego_vertexs_lane_id):
-        # logica per cominciare il sorpasso 
-        if obj_dict["biker"][0] and obj_dict["biker"][2]<10 and get_speed(obj_dict["biker"][1]) <= 20 and not self._surpassing_biker:
-            if self.start_surpassing(obj_dict["biker"][1], waypoint, "left"):
-                #input()
-                return True
-        print(obj_dict['vehicle'])
-        #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
-        if obj_dict['vehicle'][0] and obj_dict['vehicle'][2]<20 and obj_dict["vehicle"][1].get_light_state() in [1537,1539] \
-            and not self._surpassing_car:
-            if self.start_surpassing(obj_dict["vehicle"][1], waypoint, "left"):
-                #input()
-                return True
-        #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
-        if obj_dict['static_obj'][0] and obj_dict['static_obj'][2]<20 and obj_dict["static_obj"][1].type_id in ['static.prop.trafficwarning'] \
-            and not self._surpassing_obstacle:
-            if self.start_surpassing(obj_dict["static_obj"][1], waypoint, "left"):
-                #input()
-                return True
         valori = []
         for valore in obj_dict.values():
             if valore[0]:
                 valori.append(valore[1])
-        ordered_objs = self.order_by_dist(valori, waypoint, 45, True)
+        ordered_objs,dists = self.order_by_dist(valori, waypoint, 45, True)
         if len(ordered_objs) > 0:
+            print(ordered_objs[0])
+            print('dists[0][1]',dists[0][1])
             print("state 1")
             ##input()
             bb_coords = ordered_objs[0].bounding_box.get_world_vertices(ordered_objs[0].get_transform())
             obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
             int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
             not_my_lane_list = list(set(obj_vertexs_lane_id) - set(int_list))
+            if len(int_list)>0 and len(not_my_lane_list) == 0:
+                print('len(int_list): ',len(int_list),'len(not_my_lane_list): ',len(not_my_lane_list))
+                print('ordered_objs[0].type_id: ',ordered_objs[0].type_id)
+                # logica per cominciare il sorpasso        
+                if ordered_objs[0].type_id in ['vehicle.bh.crossbike','vehicle.gazelle.omafiets','vehicle.diamondback.century']:
+                    if dists[0][1]<10 and get_speed(ordered_objs[0]) <= 20 and not self._surpassing_obj:
+                        if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                            #input()
+                            return True
+                if 'vehicle' in ordered_objs[0].type_id:
+                #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
+                    if dists[0][1]<20 and ordered_objs[0].get_light_state() in [1537,1539, 49] and not self._surpassing_obj:
+                        if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                            #input()
+                            return True
+                if ordered_objs[0].type_id in ['static.prop.trafficwarning','static.prop.warningaccident']:
+                #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
+                    if dists[0][1]<20 and not self._surpassing_obj:
+                        if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                            #input()
+                            return True
             #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
-            if len(int_list)>0 and len(not_my_lane_list)> 0:
+            elif len(int_list)>0:
                 print("state 2")
                 # #input()
                 print("len(int_list): ", len(int_list), "len(not_my_lane_list): ", len(not_my_lane_list))
@@ -780,44 +781,3 @@ class BehaviorAgent(BasicAgent):
             return np.linalg.norm(diff_lane) - how_much_move
         
 
-
-    def get_bounding_box_corners(self, actor):
-        """
-        Restituisce le coordinate dei vertici del bounding box di un attore in CARLA.
-        :param actor: l'attore di cui si vogliono trovare le coordinate del bounding box.
-        :return: una lista di numpy array che rappresentano i vertici del bounding box.
-        """
-        bbox = actor.bounding_box
-        trans = actor.get_transform()
-        location = trans.location
-        yaw = np.deg2rad(trans.rotation.yaw)
-        print("yaw: ", yaw)
-        # Calcola le dimensioni del bounding box (divise per due)
-        extent_x = bbox.extent.x if bbox.extent.x != 0 else 1
-        extent_y = bbox.extent.y if bbox.extent.y != 0 else 1
-        extent_z = bbox.extent.z if bbox.extent.z != 0 else 1
-        print("extent_x: ",extent_x,"extent_y: ",extent_y,"extent_z: ",extent_z)
-        # Calcola le coordinate del bounding box rispetto al centro del veicolo
-        bounding_box = np.array([
-            [extent_x, extent_y, 0],
-            [-extent_x, extent_y, 0],
-            [-extent_x, -extent_y, 0],
-            [extent_x, -extent_y, 0],
-            [extent_x, extent_y, 2 * extent_z],
-            [-extent_x, extent_y, 2 * extent_z],
-            [-extent_x, -extent_y, 2 * extent_z],
-            [extent_x, -extent_y, 2 * extent_z]])
-
-        # Ruota e trasla il bounding box in base all'orientamento e alla posizione dell'attore
-        rotation = np.array([
-            [np.cos(yaw), -np.sin(yaw), 0],
-            [np.sin(yaw), np.cos(yaw), 0],
-            [0, 0, 1]])
-        print("rotation: ", rotation)
-        transformed_box = []
-        for point in bounding_box:
-            transformed_point = np.dot(rotation, point)
-            transformed_point += np.array([location.x, location.y, location.z])
-            transformed_box.append(transformed_point)
-
-        return transformed_box

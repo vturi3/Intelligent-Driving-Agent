@@ -57,7 +57,7 @@ class BasicAgent(object):
         self._last_stop_signid = None
 
         self._surpassing_police = False
-        self._surpassing_biker = False
+        self._surpassing_obj = False
         self._surpassing_obstacle = False
         self._surpassing_car = False
 
@@ -712,15 +712,24 @@ class BasicAgent(object):
                 else:
                     cond =  lane_offset
                 
+
+
+
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
-                tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
-                tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
+                # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+                tv_bb_coords = self.get_bounding_box_corners(target_vehicle)
+                tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
+                # if target_wpt.lane_id not in tv_vertexs_lane_id:
+                #     input()
+                #     tv_vertexs_lane_id = [target_wpt.lane_id for tv_vertex_lane_id in tv_vertexs_lane_id]
+                
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 ego_bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
-                print("SNJADLAKAJKAFBKABFDBFALJK WAYPOINT:", ego_vertexs_lane_id)
+                print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
+                print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
                 print("len(on_same_lane): ",len(on_same_lane))
                 if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
                     print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
@@ -749,7 +758,7 @@ class BasicAgent(object):
                 target_rear_extent = np.sqrt(np.square(target_vehicle.bounding_box.extent.y/2) + np.square(target_vehicle.bounding_box.extent.x/2))
                 # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo cago.
                 
-                if self._surpassing_biker and self._direction != RoadOption.LANEFOLLOW:
+                if self._surpassing_obj and self._direction != RoadOption.LANEFOLLOW:
                     max_distance = inf
                 is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
                 if dist < 0:
@@ -931,3 +940,44 @@ class BasicAgent(object):
 
         return plan
 
+
+    def get_bounding_box_corners(self, actor):
+        """
+        Restituisce le coordinate dei vertici del bounding box di un attore in CARLA.
+        :param actor: l'attore di cui si vogliono trovare le coordinate del bounding box.
+        :return: una lista di numpy array che rappresentano i vertici del bounding box.
+        """
+        bbox = actor.bounding_box
+        trans = actor.get_transform()
+        location = trans.location
+        yaw = np.deg2rad(trans.rotation.yaw)
+        print("yaw: ", yaw)
+        # Calcola le dimensioni del bounding box (divise per due)
+        extent_x = bbox.extent.x if bbox.extent.x != 0 else 1
+        extent_y = bbox.extent.y if bbox.extent.y != 0 else 1
+        extent_z = bbox.extent.z if bbox.extent.z != 0 else 1
+        print("extent_x: ",extent_x,"extent_y: ",extent_y,"extent_z: ",extent_z)
+        # Calcola le coordinate del bounding box rispetto al centro del veicolo
+        bounding_box = np.array([
+            [extent_x, extent_y, 0],
+            [-extent_x, extent_y, 0],
+            [-extent_x, -extent_y, 0],
+            [extent_x, -extent_y, 0],
+            [extent_x, extent_y, 2 * extent_z],
+            [-extent_x, extent_y, 2 * extent_z],
+            [-extent_x, -extent_y, 2 * extent_z],
+            [extent_x, -extent_y, 2 * extent_z]])
+
+        # Ruota e trasla il bounding box in base all'orientamento e alla posizione dell'attore
+        rotation = np.array([
+            [np.cos(yaw), -np.sin(yaw), 0],
+            [np.sin(yaw), np.cos(yaw), 0],
+            [0, 0, 1]])
+        print("rotation: ", rotation)
+        transformed_box = []
+        for point in bounding_box:
+            transformed_point = np.dot(rotation, point)
+            transformed_point += np.array([location.x, location.y, location.z])
+            transformed_box.append(transformed_point)
+
+        return transformed_box
