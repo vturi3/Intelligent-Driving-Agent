@@ -153,8 +153,8 @@ def our_is_within_distance(target_c_transform, reference_c_transform,target_rear
 
     fwd = reference_c_transform.get_forward_vector()
     forward_vector = np.array([fwd.x, fwd.y])
-    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
-
+    angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.))) 
+    
     return (min_angle < angle < max_angle, distance)
 
 def compute_magnitude_angle(target_location, current_location, orientation):

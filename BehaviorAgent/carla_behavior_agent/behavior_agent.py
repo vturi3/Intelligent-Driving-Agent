@@ -409,7 +409,7 @@ class BehaviorAgent(BasicAgent):
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         affected_by_stop,dist_from_stop = self.stop_sign_manager()
         if affected_by_stop:
-            print("sto in stop_sign")
+            #print("sto in stop_sign")
             return self.controlled_stop(distance=dist_from_stop)
         
 
@@ -419,8 +419,9 @@ class BehaviorAgent(BasicAgent):
             condToNotEnter, v, d = self._our_vehicle_obstacle_detected(
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
-
+        print("non entro in end surpassing xke " ,self._surpassing_obj, self._before_surpass_lane_id != None, not condToNotEnter)
         if (self._surpassing_obj) and self._before_surpass_lane_id != None and not condToNotEnter:
+            #input()
             print("end_surpassing(ego_vehicle_wp)")
             #capire xke non entra qua dentro
             if self.end_surpassing(ego_vehicle_wp):
@@ -530,7 +531,8 @@ class BehaviorAgent(BasicAgent):
             static_obj_type = getattr(static_obj,'object_type',None)
             print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
             print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
-            if static_obj.type_id  != 'static.prop.mesh':
+            print('voglio stare fermo per ', static_obj, 'ma devo superare ', self._surpassing_obj)
+            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj:
                 if stop_cond:
                     print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
@@ -597,7 +599,7 @@ class BehaviorAgent(BasicAgent):
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
         control = self.emergency_stop()
         # Under safety time distance, slow down.
-        if distance <= 2:
+        if distance <= 5:
             return control
         elif self._speed < 15 and distance > 2:
             target_speed = distance * 3
@@ -706,6 +708,7 @@ class BehaviorAgent(BasicAgent):
                 #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
                     if dists[0][1]<20 and not self._surpassing_obj:
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                            print('start surpassing obj')
                             #input()
                             return True
             #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
