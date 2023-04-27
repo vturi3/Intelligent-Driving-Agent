@@ -717,7 +717,7 @@ class BasicAgent(object):
 
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
-                tv_bb_coords = self.get_bounding_box_corners(target_vehicle)
+                tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
                 tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
                 # if target_wpt.lane_id not in tv_vertexs_lane_id:
                 #     input()
@@ -980,4 +980,5 @@ class BasicAgent(object):
             transformed_point += np.array([location.x, location.y, location.z])
             transformed_box.append(transformed_point)
 
-        return transformed_box
+        return (transformed_box,extent_x,extent_y,extent_z)
+    

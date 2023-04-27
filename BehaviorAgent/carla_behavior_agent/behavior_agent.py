@@ -747,7 +747,7 @@ class BehaviorAgent(BasicAgent):
         print("corresponding_t_wpt: ",corresponding_t_wpt,"target_transform.location: ",target_transform.location,"target_wpt: ", target_wpt,"np.linalg.norm(diff_lane): ", np.linalg.norm(diff_lane))
         #ottenere tutti i vertici del target vehicle target
         # # Otteniamo i vertici del bounding box in coordinate locali
-        target_bb = self.get_bounding_box_corners(target_vehicle)
+        target_bb, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
         #target_bb = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
         print("target_bb[0]:", target_bb[0])
         distances = {} 
@@ -779,8 +779,12 @@ class BehaviorAgent(BasicAgent):
         print("how_much_move: ",how_much_move, "dot_product: ", dot_product,"np.linalg.norm(diff_lane)/2:",np.linalg.norm(diff_lane)/2 )
         #input()
         if ego_vehicle_wp.lane_id != target_wpt.lane_id:
-            return how_much_move
+            print("case my lane diversa da target lane, mi muovo di: ", how_much_move)
+            input()
+            return how_much_move + e_x/2
         else:
+            print("case my lane uguale a target lane, mi muovo di: ", np.linalg.norm(diff_lane) + e_x/2 - how_much_move, "how_move è:", how_much_move)
+            input()
             return np.linalg.norm(diff_lane) - how_much_move
         
 
