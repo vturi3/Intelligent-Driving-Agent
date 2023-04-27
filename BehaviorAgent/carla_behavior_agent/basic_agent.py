@@ -953,9 +953,9 @@ class BasicAgent(object):
         yaw = np.deg2rad(trans.rotation.yaw)
         print("yaw: ", yaw)
         # Calcola le dimensioni del bounding box (divise per due)
-        extent_x = bbox.extent.x if bbox.extent.x != 0 else 1
-        extent_y = bbox.extent.y if bbox.extent.y != 0 else 1
-        extent_z = bbox.extent.z if bbox.extent.z != 0 else 1
+        extent_x = bbox.extent.x if bbox.extent.x != 0 else 0.6096/2
+        extent_y = bbox.extent.y if bbox.extent.y != 0 else 1.7272/2
+        extent_z = bbox.extent.z if bbox.extent.z != 0 else 1/2
         print("extent_x: ",extent_x,"extent_y: ",extent_y,"extent_z: ",extent_z)
         # Calcola le coordinate del bounding box rispetto al centro del veicolo
         bounding_box = np.array([

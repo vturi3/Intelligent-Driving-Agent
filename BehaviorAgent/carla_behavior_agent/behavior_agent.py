@@ -17,7 +17,7 @@ from behavior_types import Cautious, Aggressive, Normal
 import operator
 from local_planner import MyWaypoint
 
-from misc import get_speed, positive, is_within_distance, compute_distance,draw_bbox
+from misc import get_speed, positive, is_within_distance, compute_distance,draw_bbox, draw_waypoints
 
 class BehaviorAgent(BasicAgent):
     """
@@ -629,7 +629,7 @@ class BehaviorAgent(BasicAgent):
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>39.5):
+        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>60):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
             # input()
             #self._my_flag = True
@@ -730,8 +730,15 @@ class BehaviorAgent(BasicAgent):
         return False
 
     def meters_shifting(self, target_vehicle):
+        sec_costant = 0.9
+        my_lat_extend = self._vehicle.bounding_box.extent.y
         target_transform = target_vehicle.get_transform()
         target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
+        draw_waypoints(self._vehicle.get_world(), [target_wpt], 1.0)
+        if str(target_wpt.lane_type) != 'Driving':
+
+            input("va tutto malissomo")
+            target_wpt = target_wpt.get_left_lane()
         #AGGIUNTA DI PROVA
         #target_wpt è il punto centrale della lane su cui si trova il veicolo target
         if self._direction == RoadOption.CHANGELANELEFT:
@@ -768,23 +775,32 @@ class BehaviorAgent(BasicAgent):
         #input()
         #compute the distance between max_vertex and the target_wpt
         diff_points = np.array([
-            target_transform.location.x - max_vertex[0],
-            target_transform.location.y - max_vertex[1],
-            target_transform.location.z - max_vertex[2]])
-        dot_product = np.dot(diff_points,diff_lane)
+            target_wpt.transform.location.x - max_vertex[0],
+            target_wpt.transform.location.y - max_vertex[1],
+            target_wpt.transform.location.z - max_vertex[2]])
+        dot_product = np.linalg.norm(self.proj(diff_points, diff_lane))
         print("diff_points: ",diff_points, "max_vertex: ",max_vertex)
         ego_vehicle_loc = self._vehicle.get_location()
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
-        how_much_move = dot_product - np.linalg.norm(diff_lane)/2
+        how_much_move = abs(dot_product - np.linalg.norm(diff_lane)/2)
+        print("target_wpt.lane_type: ",target_wpt.lane_type)
         print("how_much_move: ",how_much_move, "dot_product: ", dot_product,"np.linalg.norm(diff_lane)/2:",np.linalg.norm(diff_lane)/2 )
         #input()
         if ego_vehicle_wp.lane_id != target_wpt.lane_id:
-            print("case my lane diversa da target lane, mi muovo di: ", how_much_move)
+            print("case my lane diversa da target lane, mi muovo di: ", abs(dot_product - np.linalg.norm(diff_lane)/2) + sec_costant, "dot-product: ", dot_product)
             input()
-            return how_much_move + e_x/2
+            return abs(dot_product - np.linalg.norm(diff_lane)/2) + sec_costant
         else:
-            print("case my lane uguale a target lane, mi muovo di: ", np.linalg.norm(diff_lane) + e_x/2 - how_much_move, "how_move è:", how_much_move)
+            print("case my lane uguale a target lane, mi muovo di: ", abs(my_lat_extend  - dot_product) + sec_costant, "how_move è:", how_much_move, "dot-product: ", dot_product, "e_x/2: ", e_x/2)
             input()
-            return np.linalg.norm(diff_lane) - how_much_move
+            return abs(my_lat_extend  - dot_product) + sec_costant
+        
+
+    def proj(self, A, B):
+        cos_theta = np.dot(A, B) / np.linalg.norm(B)
+        return cos_theta * (B / np.linalg.norm(B))
+
+
+
         
 
