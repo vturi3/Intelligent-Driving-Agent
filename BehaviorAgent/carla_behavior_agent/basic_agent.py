@@ -694,6 +694,7 @@ class BasicAgent(object):
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
             print("veicolo: ",target_vehicle)
+            draw_bbox(self._world,target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
@@ -728,11 +729,11 @@ class BasicAgent(object):
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
-                print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
-                print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
-                print("len(on_same_lane): ",len(on_same_lane))
+                #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
+                #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
+                #print("len(on_same_lane): ",len(on_same_lane))
                 if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
-                    print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                    #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
                     next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
@@ -952,7 +953,7 @@ class BasicAgent(object):
         location = trans.location
         yaw = np.deg2rad(trans.rotation.yaw)
         print("yaw: ", yaw)
-        # Calcola le dimensioni del bounding box (divise per due)
+        # Calcola le dimensioni del bounding box (divise per due), to manage Bicicle 
         extent_x = bbox.extent.x if bbox.extent.x != 0 else 0.6096/2
         extent_y = bbox.extent.y if bbox.extent.y != 0 else 1.7272/2
         extent_z = bbox.extent.z if bbox.extent.z != 0 else 1/2
