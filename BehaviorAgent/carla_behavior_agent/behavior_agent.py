@@ -8,6 +8,7 @@
 waypoints and avoiding other vehicles. The agent also responds to traffic lights,
 traffic signs, and has different possible configurations. """
 
+
 import random
 import numpy as np
 import carla
@@ -56,6 +57,7 @@ class BehaviorAgent(BasicAgent):
         self._sampling_resolution = 4.5
         self.surpCounter = 0
         self._before_surpass_lane_id = None
+        self.surpassing_security_step = 0
 
         # Parameters for agent behavior
         if behavior == 'cautious':
@@ -171,11 +173,11 @@ class BehaviorAgent(BasicAgent):
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=135, lane_offset=-1)
         elif self._direction == RoadOption.CHANGELANERIGHT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=135, lane_offset=1)
         else:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
@@ -528,11 +530,15 @@ class BehaviorAgent(BasicAgent):
             static_obj = obstacle_dict["static_obj"][1]
             obs_distance = obstacle_dict["static_obj"][2]
             stop_cond = static_obj.bounding_box.extent.z >= 0.25
+            
+            static_bb_coords = static_obj.bounding_box.get_world_vertices(static_obj.get_transform())
+            obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in static_bb_coords]
             static_obj_type = getattr(static_obj,'object_type',None)
             print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
             print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
             print('voglio stare fermo per ', static_obj, 'ma devo superare ', self._surpassing_obj)
-            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj:
+            print("obj_vertexs_lane_id: ", obj_vertexs_lane_id)
+            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id:
                 if stop_cond:
                     print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
@@ -629,7 +635,7 @@ class BehaviorAgent(BasicAgent):
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>60):
+        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
             # input()
             #self._my_flag = True
@@ -643,7 +649,7 @@ class BehaviorAgent(BasicAgent):
             self.surpass_vehicle = obj_to_s
             print('sto superando')
             self._direction = last_dir
-            #input()
+            input()
             return True
         else:
             self._surpassing_obj = False
@@ -663,15 +669,21 @@ class BehaviorAgent(BasicAgent):
             print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
         if not com_vehicle_state:
-            print('STO PER RIENTRARE IN CORSIA')
-            ##input()
-            self.surpass_vehicle = None
-            self._local_planner._change_line = "None"
-            self._local_planner.delta = 0
-            self._local_planner.dir = "left"
-            self._surpassing_obj = False
-            self._before_surpass_lane_id = None
-            return True
+            if self.surpassing_security_step > 10:
+                print('STO PER RIENTRARE IN CORSIA')
+                ##input()
+                self.surpass_vehicle = None
+                self._local_planner._change_line = "None"
+                self._local_planner.delta = 0
+                self._local_planner.dir = "left"
+                self._surpassing_obj = False
+                self._before_surpass_lane_id = None
+                self.surpassing_security_step = 0
+                return True
+            else:
+                self.surpassing_security_step += 1
+                print("self.surpassing_security_step: ", self.surpassing_security_step)
+                input()
         return False
             
     def obstacle_avoidance(self, obj_dict, waypoint, ego_vertexs_lane_id):
@@ -685,9 +697,11 @@ class BehaviorAgent(BasicAgent):
             print('dists[0][1]',dists[0][1])
             print("state 1")
             ##input()
-            bb_coords = ordered_objs[0].bounding_box.get_world_vertices(ordered_objs[0].get_transform())
-            obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
+            obj_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(ordered_objs[0])
+            obj_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in obj_bb_coords]
             int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
+            print("obj_vertexs_lane_id: ", obj_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
+            draw_bbox(self._world, ordered_objs[0])
             not_my_lane_list = list(set(obj_vertexs_lane_id) - set(int_list))
             if len(int_list)>0 and len(not_my_lane_list) == 0:
                 print('len(int_list): ',len(int_list),'len(not_my_lane_list): ',len(not_my_lane_list))
@@ -737,7 +751,7 @@ class BehaviorAgent(BasicAgent):
         draw_waypoints(self._vehicle.get_world(), [target_wpt], 1.0)
         if str(target_wpt.lane_type) != 'Driving':
 
-            input("va tutto malissomo")
+            # input("va tutto malissomo")
             target_wpt = target_wpt.get_left_lane()
         #AGGIUNTA DI PROVA
         #target_wpt è il punto centrale della lane su cui si trova il veicolo target
@@ -778,27 +792,28 @@ class BehaviorAgent(BasicAgent):
             target_wpt.transform.location.x - max_vertex[0],
             target_wpt.transform.location.y - max_vertex[1],
             target_wpt.transform.location.z - max_vertex[2]])
-        dot_product = np.linalg.norm(self.proj(diff_points, diff_lane))
+        dot_product, cos_for_sign = self.proj(diff_points, diff_lane)
+        dot_product = np.copysign(np.linalg.norm(dot_product), cos_for_sign)
         print("diff_points: ",diff_points, "max_vertex: ",max_vertex)
         ego_vehicle_loc = self._vehicle.get_location()
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
         how_much_move = abs(dot_product - np.linalg.norm(diff_lane)/2)
         print("target_wpt.lane_type: ",target_wpt.lane_type)
-        print("how_much_move: ",how_much_move, "dot_product: ", dot_product,"np.linalg.norm(diff_lane)/2:",np.linalg.norm(diff_lane)/2 )
+        print("how_much_move: ",how_much_move, "cos_for_sign: ", cos_for_sign, "dot_product: ", dot_product,"np.linalg.norm(diff_lane)/2:",np.linalg.norm(diff_lane)/2 )
         #input()
         if ego_vehicle_wp.lane_id != target_wpt.lane_id:
             print("case my lane diversa da target lane, mi muovo di: ", abs(dot_product - np.linalg.norm(diff_lane)/2) + sec_costant, "dot-product: ", dot_product)
-            input()
+            # input()
             return abs(dot_product - np.linalg.norm(diff_lane)/2) + sec_costant
         else:
             print("case my lane uguale a target lane, mi muovo di: ", abs(my_lat_extend  - dot_product) + sec_costant, "how_move è:", how_much_move, "dot-product: ", dot_product, "e_x/2: ", e_x/2)
-            input()
+            # input()
             return abs(my_lat_extend  - dot_product) + sec_costant
         
 
     def proj(self, A, B):
         cos_theta = np.dot(A, B) / np.linalg.norm(B)
-        return cos_theta * (B / np.linalg.norm(B))
+        return (cos_theta * (B / np.linalg.norm(B)), cos_theta)
 
 
 
