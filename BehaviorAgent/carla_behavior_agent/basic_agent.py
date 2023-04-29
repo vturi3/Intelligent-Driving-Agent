@@ -643,7 +643,7 @@ class BasicAgent(object):
         print("BBOX: offset ", x_offset)
 
         # calcola le nuove dimensioni del bounding box
-        new_bbox_extent = carla.Vector3D(x=bbox_extent.x + x_offset, y=bbox_extent.y, z=2)
+        new_bbox_extent = carla.Vector3D(x=x_offset, y=bbox_extent.y, z=2)
 
         print("BBOX: new bbox extent" , new_bbox_extent)
         

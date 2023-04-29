@@ -17,7 +17,7 @@ from local_planner import RoadOption
 from behavior_types import Cautious, Aggressive, Normal
 import operator
 from local_planner import MyWaypoint
-
+from math import pi
 from misc import get_speed, positive, is_within_distance, compute_distance,draw_bbox, draw_waypoints
 
 class BehaviorAgent(BasicAgent):
@@ -635,7 +635,7 @@ class BehaviorAgent(BasicAgent):
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
+        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>67):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
             # input()
             #self._my_flag = True
@@ -649,7 +649,7 @@ class BehaviorAgent(BasicAgent):
             self.surpass_vehicle = obj_to_s
             print('sto superando')
             self._direction = last_dir
-            input()
+            # input()
             return True
         else:
             self._surpassing_obj = False
@@ -664,12 +664,13 @@ class BehaviorAgent(BasicAgent):
         elif self._local_planner._change_line=="right":        
             self._direction = RoadOption.CHANGELANELEFT
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
         self._direction = last_dir
         if self._local_planner._change_line != "None":
             print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
-        if not com_vehicle_state:
-            if self.surpassing_security_step > 10:
+        if not com_vehicle_state and not com_obj_state:
+            if self.surpassing_security_step > 7:
                 print('STO PER RIENTRARE IN CORSIA')
                 ##input()
                 self.surpass_vehicle = None
@@ -683,7 +684,7 @@ class BehaviorAgent(BasicAgent):
             else:
                 self.surpassing_security_step += 1
                 print("self.surpassing_security_step: ", self.surpassing_security_step)
-                input()
+                # input()
         return False
             
     def obstacle_avoidance(self, obj_dict, waypoint, ego_vertexs_lane_id):
@@ -793,7 +794,10 @@ class BehaviorAgent(BasicAgent):
             target_wpt.transform.location.y - max_vertex[1],
             target_wpt.transform.location.z - max_vertex[2]])
         dot_product, cos_for_sign = self.proj(diff_points, diff_lane)
-        dot_product = np.copysign(np.linalg.norm(dot_product), cos_for_sign)
+        if abs(cos_for_sign) > pi/4:
+            dot_product = np.copysign(np.linalg.norm(dot_product), -1)
+        else:
+            dot_product = np.copysign(np.linalg.norm(dot_product), 1)
         print("diff_points: ",diff_points, "max_vertex: ",max_vertex)
         ego_vehicle_loc = self._vehicle.get_location()
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
@@ -808,7 +812,7 @@ class BehaviorAgent(BasicAgent):
         else:
             print("case my lane uguale a target lane, mi muovo di: ", abs(my_lat_extend  - dot_product) + sec_costant, "how_move è:", how_much_move, "dot-product: ", dot_product, "e_x/2: ", e_x/2)
             # input()
-            return abs(my_lat_extend  - dot_product) + sec_costant
+            return abs(my_lat_extend - dot_product) + sec_costant
         
 
     def proj(self, A, B):
