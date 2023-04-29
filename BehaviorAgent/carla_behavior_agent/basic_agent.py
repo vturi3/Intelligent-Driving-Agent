@@ -609,7 +609,7 @@ class BasicAgent(object):
 
         return (False, None, -1)
 
-    def allunga_bounding_box(self,vehicle, alpha=0.1):
+    def allunga_bounding_box(self,vehicle, alpha=0.115):
         """
         Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
 
@@ -643,13 +643,24 @@ class BasicAgent(object):
         print("BBOX: offset ", x_offset)
 
         # calcola le nuove dimensioni del bounding box
-        new_bbox_extent = carla.Vector3D(x=bbox_extent.x + x_offset, y=bbox_extent.y, z=2)
+        new_bbox_extent = carla.Vector3D(x=x_offset, y=bbox_extent.y, z=2)
 
         print("BBOX: new bbox extent" , new_bbox_extent)
-        
-        draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0))
 
-        return carla.BoundingBox(bbox.location, new_bbox_extent)
+        vehicle_transform = vehicle.get_transform()
+        vehicle_ffVector_x = vehicle_transform.get_forward_vector().x
+        vehicle_ffVector_y = vehicle_transform.get_forward_vector().y
+
+        spostamento_x = vehicle_ffVector_x * (x_offset-bbox_extent.x)
+        spostamento_y = vehicle_ffVector_y * (x_offset-bbox_extent.x)
+
+        new_location = carla.Location(x=vehicle_transform.location.x + spostamento_x, y=vehicle_transform.location.y + spostamento_y, z=vehicle_transform.location.z) 
+
+        new_transform = carla.Transform(new_location, vehicle_transform.rotation) 
+
+        draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0),location=new_location)
+
+        return carla.BoundingBox(bbox.location, new_bbox_extent),new_transform
 
 
     def _our_vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
@@ -844,14 +855,12 @@ class BasicAgent(object):
             # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. 
             # Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
             for target_vehicle in vehicle_list:
-                if target_vehicle.id == self._vehicle.id:
-                    continue
                 if ego_location.distance(target_vehicle.get_location()) > max_distance:
                     continue
 
-                target_bb = self.allunga_bounding_box(target_vehicle)
+                target_bb,new_transform = self.allunga_bounding_box(target_vehicle)
                 
-                target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform())
+                target_vertices = target_bb.get_world_vertices(new_transform)
                 target_list = [[v.x, v.y, v.z] for v in target_vertices]
                 target_polygon = Polygon(target_list)
 

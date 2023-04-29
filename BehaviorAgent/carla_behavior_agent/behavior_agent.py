@@ -370,8 +370,6 @@ class BehaviorAgent(BasicAgent):
         """
 
         self._update_information()
-        if False:
-            input()
         control = None
         if self._behavior.tailgate_counter > 0:
             self._behavior.tailgate_counter -= 1
@@ -381,6 +379,9 @@ class BehaviorAgent(BasicAgent):
         bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
         ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
         
+        if False:
+            print(ego_vehicle_loc)
+            input()
         
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
@@ -503,7 +504,7 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["vehicle"][0]:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id:
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not self._incoming_waypoint.is_junction:
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
