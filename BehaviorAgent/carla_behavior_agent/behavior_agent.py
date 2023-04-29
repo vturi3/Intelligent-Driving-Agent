@@ -410,7 +410,7 @@ class BehaviorAgent(BasicAgent):
         affected_by_stop,dist_from_stop = self.stop_sign_manager()
         if affected_by_stop:
             #print("sto in stop_sign")
-            return self.controlled_stop(distance=dist_from_stop)
+            return self.controlled_stop(distance=dist_from_stop,minDistance=2)
         
 
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
@@ -419,10 +419,8 @@ class BehaviorAgent(BasicAgent):
             condToNotEnter, v, d = self._our_vehicle_obstacle_detected(
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
-        print("non entro in end surpassing xke " ,self._surpassing_obj, self._before_surpass_lane_id != None, not condToNotEnter)
         if (self._surpassing_obj) and self._before_surpass_lane_id != None and not condToNotEnter:
             #input()
-            print("end_surpassing(ego_vehicle_wp)")
             #capire xke non entra qua dentro
             if self.end_surpassing(ego_vehicle_wp):
                 return self._local_planner.run_step(debug=debug)
@@ -480,7 +478,7 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["biker"][0]:
             biker_vehicle_loc = obstacle_dict["biker"][1].get_location()
             biker_vehicle_wp = self._map.get_waypoint(biker_vehicle_loc)
-            print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
+            #print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
             ##input()
             if biker_vehicle_wp.lane_id != self._before_surpass_lane_id:
                 # input()
@@ -529,9 +527,9 @@ class BehaviorAgent(BasicAgent):
             obs_distance = obstacle_dict["static_obj"][2]
             stop_cond = static_obj.bounding_box.extent.z >= 0.25
             static_obj_type = getattr(static_obj,'object_type',None)
-            print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
-            print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
-            print('voglio stare fermo per ', static_obj, 'ma devo superare ', self._surpassing_obj)
+            #print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
+            #print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
+            #print('voglio stare fermo per ', static_obj, 'ma devo superare ', self._surpassing_obj)
             if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj:
                 if stop_cond:
                     print("static object più alto di mezzo metro, mi fermo")
@@ -560,7 +558,7 @@ class BehaviorAgent(BasicAgent):
                     if v_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
                         return self.emergency_stop()
                     elif v_distance < self._behavior.braking_distance + delta_v * 0.2:
-                        return self.controlled_stop(vehicle, v_distance)
+                        return self.controlled_stop(vehicle, v_distance,minDistance=2)
                     else:
                         return self.car_following_manager(vehicle, v_distance)
 
@@ -591,7 +589,7 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
 
-    def controlled_stop(self, vehicle=None, distance=0.0):
+    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=5):
         vehicle_speed = 0.0
         if vehicle != None:
             vehicle_speed = get_speed(vehicle)
@@ -599,7 +597,7 @@ class BehaviorAgent(BasicAgent):
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
         control = self.emergency_stop()
         # Under safety time distance, slow down.
-        if distance <= 5:
+        if distance <= minDistance:
             return control
         elif self._speed < 15 and distance > 2:
             target_speed = distance * 3
@@ -629,7 +627,7 @@ class BehaviorAgent(BasicAgent):
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>60):
+        if com_vehicle!=None and not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>60):
             print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
             # input()
             #self._my_flag = True
@@ -664,7 +662,7 @@ class BehaviorAgent(BasicAgent):
             #input()
         if not com_vehicle_state:
             print('STO PER RIENTRARE IN CORSIA')
-            ##input()
+            #input()
             self.surpass_vehicle = None
             self._local_planner._change_line = "None"
             self._local_planner.delta = 0
