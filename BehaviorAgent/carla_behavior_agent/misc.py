@@ -27,7 +27,7 @@ def draw_waypoints(world, waypoints, z=0.5):
         end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
         world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=1.0)
 
-def draw_bbox(world, vehicle,vehicleVector=None,location=None,color=carla.Color(255,0,0,0),duration=0.1):
+def draw_bbox(world, vehicle,vehicleVector=None,location=None,color=carla.Color(255,0,0,0),duration=0.1,rotation=None):
     """
      da scrivere ora nn ho tempo
     """
@@ -35,8 +35,10 @@ def draw_bbox(world, vehicle,vehicleVector=None,location=None,color=carla.Color(
         vehicleVector = vehicle.bounding_box.extent
     if not location:
         location = vehicle.get_transform().location
+    if not rotation:
+        rotation = vehicle.get_transform().rotation
     world.debug.draw_box(carla.BoundingBox(location,carla.Vector3D(vehicleVector.x,vehicleVector.y,2)),
-                         vehicle.get_transform().rotation, 0.05, color,duration)
+                         rotation, 0.05, color,duration)
 
 
 def get_speed(vehicle):

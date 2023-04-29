@@ -609,7 +609,7 @@ class BasicAgent(object):
 
         return (False, None, -1)
 
-    def allunga_bounding_box(self,vehicle, alpha=0.1):
+    def allunga_bounding_box(self,vehicle, alpha=0.115):
         """
         Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
 
@@ -646,10 +646,21 @@ class BasicAgent(object):
         new_bbox_extent = carla.Vector3D(x=x_offset, y=bbox_extent.y, z=2)
 
         print("BBOX: new bbox extent" , new_bbox_extent)
-        
-        draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0))
 
-        return carla.BoundingBox(bbox.location, new_bbox_extent)
+        vehicle_transform = vehicle.get_transform()
+        vehicle_ffVector_x = vehicle_transform.get_forward_vector().x
+        vehicle_ffVector_y = vehicle_transform.get_forward_vector().y
+
+        spostamento_x = vehicle_ffVector_x * (x_offset-bbox_extent.x)
+        spostamento_y = vehicle_ffVector_y * (x_offset-bbox_extent.x)
+
+        new_location = carla.Location(x=vehicle_transform.location.x + spostamento_x, y=vehicle_transform.location.y + spostamento_y, z=vehicle_transform.location.z) 
+
+        new_transform = carla.Transform(new_location, vehicle_transform.rotation) 
+
+        draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0),location=new_location)
+
+        return carla.BoundingBox(bbox.location, new_bbox_extent),new_transform
 
 
     def _our_vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None, up_angle_th=90, low_angle_th=0, lane_offset=0):
@@ -694,6 +705,7 @@ class BasicAgent(object):
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
             print("veicolo: ",target_vehicle)
+            draw_bbox(self._world,target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
@@ -728,11 +740,11 @@ class BasicAgent(object):
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
-                print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
-                print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
-                print("len(on_same_lane): ",len(on_same_lane))
+                #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
+                #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
+                #print("len(on_same_lane): ",len(on_same_lane))
                 if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
-                    print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                    #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
                     next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
@@ -843,14 +855,12 @@ class BasicAgent(object):
             # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. 
             # Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
             for target_vehicle in vehicle_list:
-                if target_vehicle.id == self._vehicle.id:
-                    continue
                 if ego_location.distance(target_vehicle.get_location()) > max_distance:
                     continue
 
-                target_bb = self.allunga_bounding_box(target_vehicle)
+                target_bb,new_transform = self.allunga_bounding_box(target_vehicle)
                 
-                target_vertices = target_bb.get_world_vertices(target_vehicle.get_transform())
+                target_vertices = target_bb.get_world_vertices(new_transform)
                 target_list = [[v.x, v.y, v.z] for v in target_vertices]
                 target_polygon = Polygon(target_list)
 
@@ -952,7 +962,7 @@ class BasicAgent(object):
         location = trans.location
         yaw = np.deg2rad(trans.rotation.yaw)
         print("yaw: ", yaw)
-        # Calcola le dimensioni del bounding box (divise per due)
+        # Calcola le dimensioni del bounding box (divise per due), to manage Bicicle 
         extent_x = bbox.extent.x if bbox.extent.x != 0 else 0.6096/2
         extent_y = bbox.extent.y if bbox.extent.y != 0 else 1.7272/2
         extent_z = bbox.extent.z if bbox.extent.z != 0 else 1/2

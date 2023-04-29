@@ -370,8 +370,6 @@ class BehaviorAgent(BasicAgent):
         """
 
         self._update_information()
-        if False:
-            input()
         control = None
         if self._behavior.tailgate_counter > 0:
             self._behavior.tailgate_counter -= 1
@@ -381,6 +379,9 @@ class BehaviorAgent(BasicAgent):
         bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
         ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
         
+        if False:
+            print(ego_vehicle_loc)
+            input()
         
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
@@ -412,7 +413,7 @@ class BehaviorAgent(BasicAgent):
         affected_by_stop,dist_from_stop = self.stop_sign_manager()
         if affected_by_stop:
             #print("sto in stop_sign")
-            return self.controlled_stop(distance=dist_from_stop)
+            return self.controlled_stop(distance=dist_from_stop,minDistance=2)
         
 
         # self._before_surpass_lane_id != ego_vehicle_wp.lane_id
@@ -421,10 +422,8 @@ class BehaviorAgent(BasicAgent):
             condToNotEnter, v, d = self._our_vehicle_obstacle_detected(
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
-        print("non entro in end surpassing xke " ,self._surpassing_obj, self._before_surpass_lane_id != None, not condToNotEnter)
         if (self._surpassing_obj) and self._before_surpass_lane_id != None and not condToNotEnter:
             #input()
-            print("end_surpassing(ego_vehicle_wp)")
             #capire xke non entra qua dentro
             if self.end_surpassing(ego_vehicle_wp):
                 return self._local_planner.run_step(debug=debug)
@@ -482,7 +481,7 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["biker"][0]:
             biker_vehicle_loc = obstacle_dict["biker"][1].get_location()
             biker_vehicle_wp = self._map.get_waypoint(biker_vehicle_loc)
-            print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
+            #print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
             ##input()
             if biker_vehicle_wp.lane_id != self._before_surpass_lane_id:
                 # input()
@@ -505,7 +504,7 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["vehicle"][0]:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id:
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not self._incoming_waypoint.is_junction:
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
@@ -566,7 +565,7 @@ class BehaviorAgent(BasicAgent):
                     if v_distance < self._behavior.braking_distance/4 + delta_v * 0.2:
                         return self.emergency_stop()
                     elif v_distance < self._behavior.braking_distance + delta_v * 0.2:
-                        return self.controlled_stop(vehicle, v_distance)
+                        return self.controlled_stop(vehicle, v_distance,minDistance=2)
                     else:
                         return self.car_following_manager(vehicle, v_distance)
 
@@ -597,7 +596,7 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
 
-    def controlled_stop(self, vehicle=None, distance=0.0):
+    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=5):
         vehicle_speed = 0.0
         if vehicle != None:
             vehicle_speed = get_speed(vehicle)
@@ -605,7 +604,7 @@ class BehaviorAgent(BasicAgent):
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
         control = self.emergency_stop()
         # Under safety time distance, slow down.
-        if distance <= 5:
+        if distance <= minDistance:
             return control
         elif self._speed < 15 and distance > 2:
             target_speed = distance * 3
