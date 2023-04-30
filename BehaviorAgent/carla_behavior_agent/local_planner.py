@@ -155,10 +155,16 @@ class LocalPlanner(object):
         :param speed: new target speed in Km/h
         :return:
         """
-        if self._follow_speed_limits:
+        """if self._follow_speed_limits:
             print("WARNING: The max speed is currently set to follow the speed limits. "
-                  "Use 'follow_speed_limits' to deactivate this")
-        self._target_speed = speed
+                  "Use 'follow_speed_limits' to deactivate this")"""
+        limit = self._vehicle.get_speed_limit()
+        print("LIMITE DI VEL: ",limit)
+        if speed > limit:
+            print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
+            self._target_speed = limit
+        else:
+            self._target_speed = speed
 
     def follow_speed_limits(self, value=True):
         """
