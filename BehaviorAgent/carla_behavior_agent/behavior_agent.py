@@ -232,6 +232,31 @@ class BehaviorAgent(BasicAgent):
 
         return vehicle_state, vehicle, distance
 
+    def get_all_necessary(self,waypoint):
+
+
+        total_list = list(self._world.get_actors().filter("*walker.pedestrian*"))
+        total_list += list(list(self._world.get_actors().filter("*vehicle.bh.crossbike*")))
+        total_list += list(self._world.get_actors().filter("*vehicle.gazelle.omafiets*"))
+        total_list += list(self._world.get_actors().filter("*vehicle.diamondback.century*"))
+        total_list += list(self._world.get_actors().filter("*static.prop*"))
+        total_list += list(self._world.get_actors().filter("*vehicle*"))
+
+
+        total_list, dists = self.order_by_dist(total_list, waypoint, 80)
+        # vedo se siamo in collisione con pedone, magari distanza piccola però ci ha gia superato, a seconda delle posizioni e di cosa dobbiamo fare valutiamo in modo diverso la _vehicle_obstacle_detected (in realtà sarebbe obj), si può usare x qualsiasi cosa in carla, l'importante è passare la lista di obj in ingresso. verifico se sono in collisione con la lista di obj passati. Resistuisce se obj influenza la nostra guida, chi è e la distanza.
+        if self._direction == RoadOption.CHANGELANELEFT:
+            actor_state, actor, distance = self._our_vehicle_obstacle_detected(total_list, max(
+                self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+        elif self._direction == RoadOption.CHANGELANERIGHT:
+            actor_state, actor, distance = self._our_vehicle_obstacle_detected(total_list, max(
+                self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+        else:
+            actor_state, actor, distance = self._our_vehicle_obstacle_detected(total_list, max(
+                self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+
+        return actor_state, actor, distance
+
     def pedestrian_avoid_manager(self, waypoint):
         """
         This module is in charge of warning in case of a collision
@@ -356,7 +381,66 @@ class BehaviorAgent(BasicAgent):
         #otteniamo ora la lista corrispondente ordinata per valore
         ordered_dict = dict(sorted(static_obj_dict.items(),key=operator.itemgetter(1)))
         return (list(ordered_dict.keys()),list(ordered_dict.items()))
+    
 
+    def gestione_collisioni(self,actor_state,actor,distance,ego_vehicle_wp, obstacle_dict,ego_vertexs_lane_id):
+        typeOfActor = actor.type_id.split(".")[0] 
+        if typeOfActor == 'walker':
+            # Distance is computed from the center of the two cars,
+            # we use bounding boxes to calculate the actual distance
+            print("WALKER STATE la distanza dal pedone è: ", distance)
+            delta_v =  self._speed - get_speed(actor)
+            if delta_v < 0:
+                delta_v = 0
+            # Emergency brake if the car is very close.
+            if distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+                return self.emergency_stop()
+            elif distance < self._behavior.braking_distance + delta_v * 0.2:
+                return self.controlled_stop(actor, distance)
+        elif typeOfActor == 'biker' or typeOfActor == 'vehicle' :
+            if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
+                return self._local_planner.run_step(debug=False)
+            biker_vehicle_loc = actor.get_location()
+            biker_vehicle_wp = self._map.get_waypoint(biker_vehicle_loc)
+            #print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
+            ##input()
+            if biker_vehicle_wp.lane_id != self._before_surpass_lane_id and not self._incoming_waypoint.is_junction:
+                # input()
+                delta_v =  self._speed - get_speed(actor)
+                if delta_v < 0:
+                    delta_v = 0
+                print(typeOfActor, " STATE la distanza dal veicolo è: ", distance, "la sua lane è: ", biker_vehicle_wp.lane_id,"mentre la mia è: ", ego_vehicle_wp.lane_id,  "la mia road option è:",  self._direction)
+
+                if distance < self._behavior.braking_distance/4 + delta_v * 0.2:
+                    return self.emergency_stop()
+                elif distance < self._behavior.braking_distance + delta_v * 0.2:
+                    return self.controlled_stop(actor, distance)
+        elif typeOfActor == 'static_obj':
+            static_obj = actor
+            obs_distance = distance
+            stop_cond = static_obj.bounding_box.extent.z >= 0.25
+            
+            static_bb_coords = static_obj.bounding_box.get_world_vertices(static_obj.get_transform())
+            obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in static_bb_coords]
+            static_obj_type = getattr(static_obj,'object_type',None)
+            print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
+            print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
+            print('voglio stare fermo per ', static_obj, 'ma devo superare ', self._surpassing_obj)
+            print("obj_vertexs_lane_id: ", obj_vertexs_lane_id)
+            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id:
+                if stop_cond:
+                    print("static object più alto di mezzo metro, mi fermo")
+                    print("STATIC OBJ la distance dall'obj è: ", obs_distance)
+                    delta_v =  self._speed - get_speed(static_obj)
+                    if delta_v < 0:
+                        delta_v = 0
+                    # Emergency brake if the car is very close.
+                    if obs_distance < self._behavior.braking_distance/4 + delta_v * 0.3:
+                        return self.emergency_stop()
+                    elif obs_distance < self._behavior.braking_distance + delta_v * 0.3:
+                        return self.controlled_stop(static_obj, obs_distance)
+        
+    
     def run_step(self, debug=False):
         """
         è il metodo che viene chiamato ad ogni tiemstep.  Prendo info ed eseguo il behavior planner, che può essere rappresentaot
@@ -434,9 +518,16 @@ class BehaviorAgent(BasicAgent):
         obstacle_dict["vehicle"] = list(self.collision_and_car_avoid_manager(ego_vehicle_wp))
         obstacle_dict["static_obj"] = list(self.static_obstacle_avoid_manager(ego_vehicle_wp))
 
+        actor_state, actor, distance = self.get_all_necessary(ego_vehicle_wp)
+        if actor_state:
+            returnedValue = self.gestione_collisioni(actor_state,actor,distance,ego_vehicle_wp,obstacle_dict,ego_vertexs_lane_id)
+            if returnedValue:
+                return returnedValue
+
+        
 
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
-        if obstacle_dict["walker"][0]:
+        if obstacle_dict["walker"][0] and False:
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
             print("WALKER STATE la distanza dal pedone è: ", obstacle_dict["walker"][2])
@@ -473,12 +564,9 @@ class BehaviorAgent(BasicAgent):
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
 
-        
-        if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
-            return self._local_planner.run_step(debug=debug)
 
         
-        if obstacle_dict["biker"][0]:
+        if obstacle_dict["biker"][0] and False:
             biker_vehicle_loc = obstacle_dict["biker"][1].get_location()
             biker_vehicle_wp = self._map.get_waypoint(biker_vehicle_loc)
             #print("biker check, biker_vehicle_wp.lane_id:  ", biker_vehicle_wp.lane_id, "self._before_surpass_lane_id: ", self._before_surpass_lane_id)
@@ -501,14 +589,13 @@ class BehaviorAgent(BasicAgent):
         
 
         # stesso principio del pedone.
-        if obstacle_dict["vehicle"][0]:
+        if obstacle_dict["vehicle"][0] and False:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and vehicle_vehicle_wp.lane_id == ego_vehicle_wp.lane_id and not self._incoming_waypoint.is_junction:
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not self._incoming_waypoint.is_junction:
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
-                print("inoltre le sue luci sono ", obstacle_dict["vehicle"][1].get_light_state())
                 #if self._surpassing_obj:
                 # input()
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
@@ -523,7 +610,7 @@ class BehaviorAgent(BasicAgent):
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
-        if obstacle_dict["static_obj"][0]:
+        if obstacle_dict["static_obj"][0] and False:
             #static_obj_type = static_obj.attributes.get('object_type')
             #stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
             static_obj = obstacle_dict["static_obj"][1]
