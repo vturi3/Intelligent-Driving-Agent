@@ -48,7 +48,7 @@ class BasicAgent(object):
             if isinstance(map_inst, carla.Map):
                 self._map = map_inst
             else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                # print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._map = self._world.get_map()
         else:
             self._map = self._world.get_map()
@@ -105,7 +105,7 @@ class BasicAgent(object):
             if isinstance(grp_inst, GlobalRoutePlanner):
                 self._global_planner = grp_inst
             else:
-                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                # print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._global_planner = GlobalRoutePlanner(self._map, self._sampling_resolution)
         else:
             self._global_planner = GlobalRoutePlanner(self._map, self._sampling_resolution)
@@ -255,7 +255,7 @@ class BasicAgent(object):
         Use 'direction' to specify either a 'left' or 'right' lane change,
         and the other 3 fine tune the maneuver
         """
-        print("lane change" , direction)
+        # print("lane change" , direction)
         speed = self._vehicle.get_velocity().length()
         path = self._generate_lane_change_path(
             self._map.get_waypoint(self._vehicle.get_location()),
@@ -346,7 +346,7 @@ class BasicAgent(object):
         # qua verifico se mi sono gia fermato allo step precedete.
         if self._last_time_stop_sign:
             # qua devo verificare se posso andare avanti ritornando quindi un vuoto o eventualmente un altro !
-            print('sono fermo da ',self._last_time_stop_sign ,'e sono', self._world.get_snapshot().timestamp.elapsed_seconds)
+            # print('sono fermo da ',self._last_time_stop_sign ,'e sono', self._world.get_snapshot().timestamp.elapsed_seconds)
 
             if self._world.get_snapshot().timestamp.elapsed_seconds - self._last_time_stop_sign >= 3:
                 self._last_time_stop_sign = None
@@ -374,7 +374,7 @@ class BasicAgent(object):
             if trigger_wp.road_id != ego_vehicle_waypoint.road_id:
                 continue
 
-            print(dist_from_stop)
+            # print(dist_from_stop)
 
             # orientamento stop, cosi gestisco se si trova diffronte a me o no.
             ve_dir = ego_vehicle_waypoint.transform.get_forward_vector()
@@ -638,14 +638,14 @@ class BasicAgent(object):
         # calcola la quantità di spostamento lungo l'asse X
         x_offset = bbox_extent.x * factor
 
-        print("BBOX: velocity  ", velocity)
-        print("BBOX: fattore moltiplicativo ", factor)
-        print("BBOX: offset ", x_offset)
+        # print("BBOX: velocity  ", velocity)
+        # print("BBOX: fattore moltiplicativo ", factor)
+        # print("BBOX: offset ", x_offset)
 
         # calcola le nuove dimensioni del bounding box
         new_bbox_extent = carla.Vector3D(x=x_offset, y=bbox_extent.y, z=2)
 
-        print("BBOX: new bbox extent" , new_bbox_extent)
+        # print("BBOX: new bbox extent" , new_bbox_extent)
 
         vehicle_transform = vehicle.get_transform()
         vehicle_ffVector_x = vehicle_transform.get_forward_vector().x
@@ -704,14 +704,15 @@ class BasicAgent(object):
 
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
-            print("veicolo: ",target_vehicle)
+            # print("veicolo: ",target_vehicle)
             draw_bbox(self._world,target_vehicle)
             target_transform = target_vehicle.get_transform()
+            target_forward_vector = target_transform.get_forward_vector()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
             # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
             if not ego_wpt.is_junction or not target_wpt.is_junction:
-                print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                # print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
                 next_lane = ego_wpt.lane_id
                 if self._direction == RoadOption.CHANGELANELEFT:
                     next_lane = ego_wpt.get_left_lane().lane_id
@@ -719,7 +720,7 @@ class BasicAgent(object):
                     next_lane = ego_wpt.get_right_lane().lane_id
                 
                 if target_wpt.lane_id * ego_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                    print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
+                    # print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
                     cond = 2*lane_offset*ego_wpt.lane_id
                 else:
                     cond =  lane_offset
@@ -740,27 +741,31 @@ class BasicAgent(object):
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
-                #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
-                #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
-                #print("len(on_same_lane): ",len(on_same_lane))
+                # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
+                # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
+                # #print("len(on_same_lane): ",len(on_same_lane))
                 if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
-                    #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                    #input()
+                    # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
-                    next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
+                    if self._direction == RoadOption.RIGHT or self._direction == RoadOption.LEFT:
+                        next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=20)[0]
+                    else:
+                        next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
                     if not next_wpt:
                         continue
                     if target_wpt.lane_id * next_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                        print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
+                        # print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
                         cond = - 2*lane_offset*next_wpt.lane_id
                     else:
                         cond =  lane_offset
                     if next_wpt.lane_id in ego_vertexs_lane_id:
-                        print("len(on_same_lane) == 0: ", len(on_same_lane))
+                        # print("len(on_same_lane) == 0: ", len(on_same_lane))
                         if target_wpt.road_id != next_wpt.road_id or len(on_same_lane) == 0:
                             continue
                     else:
-                        print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
+                        # print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
                         if target_wpt.road_id != next_wpt.road_id or next_wpt.lane_id  + cond not in tv_vertexs_lane_id:
                             continue
 
@@ -775,8 +780,10 @@ class BasicAgent(object):
                 is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
                 if dist < 0:
                     dist = 0.5
-                print(dist)
-                if is_within:
+                # print(dist)
+                condToRet = (np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z])) > 0 or self._direction == RoadOption.CHANGELANELEFT or self._direction == RoadOption.CHANGELANERIGHT or ego_wpt.lane_id in tv_vertexs_lane_id)
+                if is_within and condToRet:
+                    # print("un veicolo possibile collisione: ", target_vehicle, "dist: ", dist)
                     return (True, target_vehicle, dist)
 
         return (False, None, -1)
@@ -821,7 +828,7 @@ class BasicAgent(object):
 
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
-            print("veicolo: ",target_vehicle)
+            # print("veicolo: ",target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
         
@@ -865,7 +872,7 @@ class BasicAgent(object):
                 target_polygon = Polygon(target_list)
 
                 if ego_polygon.intersects(target_polygon):
-                    print('INTERSECTION: Colpisco boundingBox')
+                    # print('INTERSECTION: Colpisco boundingBox')
                     #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
                     return (True, target_vehicle, 0.1)
 
@@ -961,12 +968,12 @@ class BasicAgent(object):
         trans = actor.get_transform()
         location = trans.location
         yaw = np.deg2rad(trans.rotation.yaw)
-        print("yaw: ", yaw)
+        # print("yaw: ", yaw)
         # Calcola le dimensioni del bounding box (divise per due), to manage Bicicle 
         extent_x = bbox.extent.x if bbox.extent.x != 0 else 0.6096/2
         extent_y = bbox.extent.y if bbox.extent.y != 0 else 1.7272/2
         extent_z = bbox.extent.z if bbox.extent.z != 0 else 1/2
-        print("extent_x: ",extent_x,"extent_y: ",extent_y,"extent_z: ",extent_z)
+        # print("extent_x: ",extent_x,"extent_y: ",extent_y,"extent_z: ",extent_z)
         # Calcola le coordinate del bounding box rispetto al centro del veicolo
         bounding_box = np.array([
             [extent_x, extent_y, 0],
@@ -983,7 +990,7 @@ class BasicAgent(object):
             [np.cos(yaw), -np.sin(yaw), 0],
             [np.sin(yaw), np.cos(yaw), 0],
             [0, 0, 1]])
-        print("rotation: ", rotation)
+        # print("rotation: ", rotation)
         transformed_box = []
         for point in bounding_box:
             transformed_point = np.dot(rotation, point)
