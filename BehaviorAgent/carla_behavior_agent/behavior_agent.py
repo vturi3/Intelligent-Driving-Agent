@@ -510,7 +510,7 @@ class BehaviorAgent(BasicAgent):
                 #print('Vehicle State:')
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
-                # print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+                print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 # print("inoltre le sue luci sono ", obstacle_dict["vehicle"][1].get_light_state())
                 #if self._surpassing_obj:
                 # input()
@@ -518,9 +518,7 @@ class BehaviorAgent(BasicAgent):
                 if delta_v < 0:
                     delta_v = 0
                 # Emergency brake if the car is very close.
-                if obstacle_dict["vehicle"][2] < self._behavior.braking_distance/4 + delta_v * 0.2:
-                    return self.emergency_stop()
-                elif obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.2:
+                if (obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.2) or (obstacle_dict["vehicle"][2] < 30 and get_speed(obstacle_dict["vehicle"][1]) < 5):
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
                 else:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
@@ -609,13 +607,17 @@ class BehaviorAgent(BasicAgent):
         # Under safety time distance, slow down.
         if distance <= minDistance:
             return control
-        elif self._speed < 15 and distance > 2:
-            target_speed = distance * 3
+        elif self._speed < 5 and distance > minDistance:
+            target_speed = max(min(distance * 3, get_speed(self._vehicle)), 2)
+            print("self._speed < 15 and distance > minDistance: ", self._speed, minDistance, "target_speed")
+            # input()
             # print("devo rallentare sono ancora lontano, l'obj vel è:",vehicle_speed," velocità: ", target_speed)
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
         elif ttc > 0.0:
-            target_speed = max((ttc/self._behavior.safety_time) * self._speed, self._behavior.speed_decrease)
+            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.5, self._speed-self._behavior.speed_decrease)
+            print("ttc: ", ttc, "target_speed: ", target_speed)
+            # input()
             # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
@@ -638,7 +640,7 @@ class BehaviorAgent(BasicAgent):
         # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
         if obj_to_s:
-            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>70):
+            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
                 #self._my_flag = True
