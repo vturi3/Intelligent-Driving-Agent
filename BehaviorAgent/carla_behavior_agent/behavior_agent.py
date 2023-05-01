@@ -637,8 +637,8 @@ class BehaviorAgent(BasicAgent):
         # if dir == "right":
         # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if obj_to_s and com_vehicle:
-            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
+        if obj_to_s:
+            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>70):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
                 #self._my_flag = True
