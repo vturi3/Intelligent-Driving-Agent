@@ -18,7 +18,7 @@ from global_route_planner import GlobalRoutePlanner
 from datetime import datetime,timedelta
 from misc import (get_speed, is_within_distance,our_is_within_distance,
                                get_trafficlight_trigger_location,
-                               compute_distance,draw_bbox)
+                               compute_distance,draw_bbox,draw_waypoints)
 import numpy as np
 from math import inf
 # from perception.perfectTracker.gt_tracker import PerfectTracker
@@ -819,60 +819,56 @@ class BasicAgent(object):
         )
         # l'idea è verficiare dove voglio andare e dove si trova il vehicle, se si trova sulla nostra corsia e strada. Quello che succede è valutare la direzione e la posizione del vehicle.
 
-        for target_vehicle in vehicle_list:
-            # per ogni vehicle della lista
-            print("veicolo: ",target_vehicle)
-            target_transform = target_vehicle.get_transform()
-            target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
-        
-            route_bb = []
-            ego_location = ego_transform.location
-            extent_y = self._vehicle.bounding_box.extent.y
-            r_vec = ego_transform.get_right_vector()
-            p1 = ego_location + carla.Location(extent_y * r_vec.x, extent_y * r_vec.y)
-            p2 = ego_location + carla.Location(-extent_y * r_vec.x, -extent_y * r_vec.y)
+    
+        route_bb = []
+        ego_location = ego_transform.location
+        extent_y = self._vehicle.bounding_box.extent.y
+        r_vec = ego_transform.get_right_vector()
+        p1 = ego_location + carla.Location(extent_y * r_vec.x, extent_y * r_vec.y)
+        p2 = ego_location + carla.Location(-extent_y * r_vec.x, -extent_y * r_vec.y)
+        route_bb.append([p1.x, p1.y, p1.z])
+        route_bb.append([p2.x, p2.y, p2.z])
+        i=0
+        for wp, _ in self._local_planner.get_plan():
+            if ego_location.distance(wp.transform.location) > max_distance or i > 3:
+                break
+            draw_waypoints(self._world,[wp])
+            i+=1
+
+            r_vec = wp.transform.get_right_vector()
+            p1 = wp.transform.location + carla.Location(extent_y * r_vec.x, extent_y * r_vec.y)
+            p2 = wp.transform.location + carla.Location(-extent_y * r_vec.x, -extent_y * r_vec.y)
             route_bb.append([p1.x, p1.y, p1.z])
             route_bb.append([p2.x, p2.y, p2.z])
 
-            for wp, _ in self._local_planner.get_plan():
-                if ego_location.distance(wp.transform.location) > max_distance:
-                    break
-
-                r_vec = wp.transform.get_right_vector()
-                p1 = wp.transform.location + carla.Location(extent_y * r_vec.x, extent_y * r_vec.y)
-                p2 = wp.transform.location + carla.Location(-extent_y * r_vec.x, -extent_y * r_vec.y)
-                route_bb.append([p1.x, p1.y, p1.z])
-                route_bb.append([p2.x, p2.y, p2.z])
-
-            if len(route_bb) < 3:
-                # 2 points don't create a polygon, nothing to check
-                return (False, None, -1)
-            ego_polygon = Polygon(route_bb)
-
-            # Compare the two polygons, per tutti gli obj passati in ingresso, se mi trovo in intersection faccio questa valuazione. 
-            # Se sono io quello che analizzo o è troppo distanet nn lo cago. 
-            # Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
-            # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. 
-            # Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
-            for target_vehicle in vehicle_list:
-                if ego_location.distance(target_vehicle.get_location()) > max_distance:
-                    continue
-
-                target_bb,new_transform = self.allunga_bounding_box(target_vehicle)
-                
-                target_vertices = target_bb.get_world_vertices(new_transform)
-                target_list = [[v.x, v.y, v.z] for v in target_vertices]
-                target_polygon = Polygon(target_list)
-
-                if ego_polygon.intersects(target_polygon):
-                    print('INTERSECTION: Colpisco boundingBox')
-                    #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
-                    return (True, target_vehicle, 0.1)
-
-
+        if len(route_bb) < 3:
+            # 2 points don't create a polygon, nothing to check
             return (False, None, -1)
+        ego_polygon = Polygon(route_bb)
+
+        # Compare the two polygons, per tutti gli obj passati in ingresso, se mi trovo in intersection faccio questa valuazione. 
+        # Se sono io quello che analizzo o è troppo distanet nn lo cago. 
+        # Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
+        # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. 
+        # Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
+        for target_vehicle in vehicle_list:
+            if ego_location.distance(target_vehicle.get_location()) > max_distance*4:
+                continue
+
+            target_bb,new_transform = self.allunga_bounding_box(target_vehicle)
+            
+            target_vertices = target_bb.get_world_vertices(new_transform)
+            target_list = [[v.x, v.y, v.z] for v in target_vertices]
+            target_polygon = Polygon(target_list)
+
+            if ego_polygon.intersects(target_polygon):
+                print('INTERSECTION: Colpisco boundingBox')
+                #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
+                return (True, target_vehicle, 0.1)
+
 
         return (False, None, -1)
+
 
     def _generate_lane_change_path(self, waypoint, direction='left', distance_same_lane=10,
                                 distance_other_lane=25, lane_change_distance=25,
