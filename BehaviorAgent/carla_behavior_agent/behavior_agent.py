@@ -58,6 +58,7 @@ class BehaviorAgent(BasicAgent):
         self.surpCounter = 0
         self._before_surpass_lane_id = None
         self.surpassing_security_step = 0
+        self.surpass_vehicle = None
 
         # Parameters for agent behavior
         if behavior == 'cautious':
@@ -504,7 +505,7 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["vehicle"][0]:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and vehicle_vehicle_wp.lane_id == ego_vehicle_wp.lane_id and not self._incoming_waypoint.is_junction:
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not self._incoming_waypoint.is_junction:
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
                 print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
@@ -634,26 +635,27 @@ class BehaviorAgent(BasicAgent):
         if dir == "right":
             print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
-        if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>67):
-            print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
-            # input()
-            #self._my_flag = True
-            self._before_surpass_lane_id = ego_vehicle_wp.lane_id
-            #self.help_sorpassing(ego_vehicle_wp,'left')
-            self._local_planner._change_line = "shifting"
-            self._local_planner.delta = self.meters_shifting(obj_to_s)
-            print(self._local_planner.delta)
-            self._local_planner.dir = dir
-            self._local_planner.set_speed(80) # da cambiare
-            self.surpass_vehicle = obj_to_s
-            print('sto superando')
-            self._direction = last_dir
-            # input()
-            return True
-        else:
-            self._surpassing_obj = False
-            self._direction = last_dir
-            print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
+        if com_vehicle:
+            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>67):
+                print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
+                # input()
+                #self._my_flag = True
+                self._before_surpass_lane_id = ego_vehicle_wp.lane_id
+                #self.help_sorpassing(ego_vehicle_wp,'left')
+                self._local_planner._change_line = "shifting"
+                self._local_planner.delta = self.meters_shifting(obj_to_s)
+                print(self._local_planner.delta)
+                self._local_planner.dir = dir
+                self._local_planner.set_speed(80) # da cambiare
+                self.surpass_vehicle = obj_to_s
+                print('sto superando')
+                self._direction = last_dir
+                # input()
+                return True
+            else:
+                self._surpassing_obj = False
+                self._direction = last_dir
+                print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
         return False
 
     def end_surpassing(self, ego_vehicle_wp):
