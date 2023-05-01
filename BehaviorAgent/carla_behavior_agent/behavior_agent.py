@@ -438,6 +438,7 @@ class BehaviorAgent(BasicAgent):
 
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
         if obstacle_dict["walker"][0]:
+            #print('Walker State:')
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
             # print("WALKER STATE la distanza dal pedone è: ", obstacle_dict["walker"][2])
@@ -473,10 +474,10 @@ class BehaviorAgent(BasicAgent):
         #         self._local_planner._change_line = "None"
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
-
         
-        if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
-            return self._local_planner.run_step(debug=debug)
+        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction:
+            if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
+                return self._local_planner.run_step(debug=debug)
 
         
         if obstacle_dict["biker"][0]:
@@ -505,7 +506,8 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["vehicle"][0]:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not self._incoming_waypoint.is_junction:
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction:
+                #print('Vehicle State:')
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
                 # print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
@@ -551,7 +553,7 @@ class BehaviorAgent(BasicAgent):
                     elif obs_distance < self._behavior.braking_distance + delta_v * 0.3:
                         return self.controlled_stop(static_obj, obs_distance)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
-        if self._incoming_waypoint.is_junction and (self._incoming_direction in [RoadOption.LEFT, RoadOption.RIGHT]):
+        if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
             vehicle_state, vehicle, v_distance = self.gestione_incrocio(ego_vehicle_wp)
             # stesso principio del pedone.
             if vehicle_state:
@@ -636,7 +638,7 @@ class BehaviorAgent(BasicAgent):
         # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
         if obj_to_s:
-            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
+            if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>70):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
                 #self._my_flag = True
