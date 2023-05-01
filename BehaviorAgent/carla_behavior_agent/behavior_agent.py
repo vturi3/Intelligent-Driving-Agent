@@ -656,7 +656,7 @@ class BehaviorAgent(BasicAgent):
                     distance = previous_poligon.distance(obstacle_polygon) #ottengo la distanza tra veicolo precedente e successivo
                     print("informazioni sull'ostacolo: ", obstacle, obs_ext_x, obs_ext_y, obs_ext_z)
                     if distance < 20 or previous_actor==self._vehicle: #DA GENERALIZZARE, condizione per cui non posso ancora reinserirmi in carreggiata
-                        distance_to_surpass +=  distance + obs_ext_x #aggiorno la distanza da sorpassare
+                        #distance_to_surpass +=  distance + obs_ext_x #aggiorno la distanza da sorpassare
                         to_surpass.append(obstacle) #aggiungo questo agli ostacoli da sorpassare
                     else: # significa che posso reinserirmi, quindi smetto di guardare gli altri veicoli perchè sono ordinati per distanza
                         break
@@ -669,6 +669,8 @@ class BehaviorAgent(BasicAgent):
             standard_acceleration = 1.95 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
             #a 0.75 che è il massimo throttle che viene realizzato
             last_surpass = to_surpass[-1]
+            last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
+            distance_to_surpass +=  Polygon(ego_corners).distance(Polygon(last_surpass_corners)) + 2*last_surpass_ext_x
             last_surpass_lane_id = (self._map.get_waypoint(last_surpass.get_transform().location, lane_type=carla.LaneType.Any)).lane_id
             print("il lane id dell'ultimo da sorpassare è: ", last_surpass_lane_id, "il mio è: ",ego_lane_id )
             last_vehicle_velocity = get_speed(last_surpass)/3.6 #la valutiamo in metri al secondo
@@ -715,9 +717,9 @@ class BehaviorAgent(BasicAgent):
                 #altrimenti devo valutare solo la sua posizione:
                 if poss_coll_speed != 0: #il possibile colidente è in movimento
                     #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
-                    collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
-                    space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
-                    #space_poss_coll = poss_coll_speed * time_to_surpass 
+                    #collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
+                    #space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
+                    space_poss_coll = poss_coll_speed * time_to_surpass 
                     poss_coll_arrive_wpt = (possible_collident_wpt.next(space_poss_coll))[0] #waypoint a cui il possibile collidente arriverà nel tempo da me richiesto per il sorpasso
                     print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
                     print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
@@ -761,7 +763,7 @@ class BehaviorAgent(BasicAgent):
         # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
         if obj_to_s:
-            if cond_to_start_surpass(ego_vehicle_wp):
+            if self.cond_to_start_surpass(ego_vehicle_wp):
             #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
