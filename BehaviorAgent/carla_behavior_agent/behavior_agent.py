@@ -209,6 +209,11 @@ class BehaviorAgent(BasicAgent):
         # logica è uguale a quella del pedone.
         vehicle_list = self._world.get_actors().filter("*vehicle*")
         vehicle_list, dists = self.order_by_dist(vehicle_list, waypoint, 45, True)
+        
+        walker_list = self._world.get_actors().filter("*walker.pedestrian*")
+        walker_list, dists = self.order_by_dist(walker_list, waypoint, 45, True)
+
+        vehicle_list = list(vehicle_list) + list(walker_list)
 
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self.gestsione_incroci(
