@@ -385,8 +385,9 @@ class BasicAgent(object):
                 continue
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]) and self._last_stop_signid != stop_sign.id:
-                self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
-                self._last_stop_signid = stop_sign.id
+                if dist_from_stop < 2.5:
+                    self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
+                    self._last_stop_signid = stop_sign.id
                 return (True, stop_sign,dist_from_stop)
 
         return (False, None,0.0)
