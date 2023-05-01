@@ -525,7 +525,7 @@ class BehaviorAgent(BasicAgent):
                 if delta_v < 0:
                     delta_v = 0
                 # Emergency brake if the car is very close.
-                if (obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.2) or (obstacle_dict["vehicle"][2] < 30 and get_speed(obstacle_dict["vehicle"][1]) < 5):
+                if (obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.2) or (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5):
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
                 else:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
@@ -604,7 +604,7 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
 
-    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=5):
+    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=8):
         vehicle_speed = 0.0
         if vehicle != None:
             vehicle_speed = get_speed(vehicle)
@@ -622,7 +622,7 @@ class BehaviorAgent(BasicAgent):
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
         elif ttc > 0.0:
-            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.5, self._speed-self._behavior.speed_decrease)
+            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.3, self._speed-self._behavior.speed_decrease)
             print("ttc: ", ttc, "target_speed: ", target_speed)
             # input()
             # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
@@ -715,30 +715,32 @@ class BehaviorAgent(BasicAgent):
                 #altrimenti devo valutare solo la sua posizione:
                 if poss_coll_speed != 0: #il possibile colidente è in movimento
                     #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
-                    collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
-                    space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
-                    #space_poss_coll = poss_coll_speed * time_to_surpass 
+                    # collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
+                    # space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
+                    space_poss_coll = poss_coll_speed * time_to_surpass 
                     poss_coll_arrive_wpt = (possible_collident_wpt.next(space_poss_coll))[0] #waypoint a cui il possibile collidente arriverà nel tempo da me richiesto per il sorpasso
                     print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
                     print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
                     print("il to arrive si trova: ", to_arrive.transform.location)
                     first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
                     second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
+                    distance_to_surpass = max(distance_to_surpass, 90)
                     if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
                         print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                         print("Sto per ritornare True")
-                        input()
+                        # input()
                         return True
                     else:
                         print("Sto per ritornare False")
-                        input()
+                        # input()
                         return False
                 else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                     print("il possible collident è fermo")
                     print("il to arrive si trova: ", to_arrive.transform.location)
                     distance_to_surpass = distance_to_surpass + 30
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
-                    input()
+                    # input()
+                    distance_to_surpass = max(distance_to_surpass, 90)
                     return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass
             else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
                 print("Sto per ritornare True ma sono nell'ultimo else")
