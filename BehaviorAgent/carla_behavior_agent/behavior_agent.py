@@ -672,7 +672,7 @@ class BehaviorAgent(BasicAgent):
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
         if not com_vehicle_state and not com_obj_state:
-            if self.surpassing_security_step > 7:
+            if self.surpassing_security_step > 3:
                 # print('STO PER RIENTRARE IN CORSIA')
                 ##input()
                 self.surpass_vehicle = None
@@ -711,7 +711,10 @@ class BehaviorAgent(BasicAgent):
                 # print('ordered_objs[0].type_id: ',ordered_objs[0].type_id)
                 # logica per cominciare il sorpasso        
                 if ordered_objs[0].type_id in ['vehicle.bh.crossbike','vehicle.gazelle.omafiets','vehicle.diamondback.century']:
-                    if dists[0][1]<10 and get_speed(ordered_objs[0]) <= 20 and not self._surpassing_obj:
+                    target_forward_vector = ordered_objs[0].get_transform().get_forward_vector()
+                    ego_forward_vector = self._vehicle.get_transform().get_forward_vector()
+                    cond = abs(np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z]))) < 0.3
+                    if dists[0][1]<10 and get_speed(ordered_objs[0]) <= 20 and not self._surpassing_obj and cond:
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             #input()
                             return True

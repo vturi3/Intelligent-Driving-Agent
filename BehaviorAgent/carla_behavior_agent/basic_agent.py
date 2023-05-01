@@ -726,8 +726,6 @@ class BasicAgent(object):
                     cond =  lane_offset
                 
 
-
-
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
                 tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
