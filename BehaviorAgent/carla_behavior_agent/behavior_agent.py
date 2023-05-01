@@ -635,7 +635,7 @@ class BehaviorAgent(BasicAgent):
         
         #devo ottenere informazioni sui veicoli da sorpassare: devono essere completamente o parzialmente nella mia lane e devono essere davanti a me:
         to_surpass = [] #conterrà tutti i veicoli che dovrò sorpassare
-        distance_to_surpass = 15 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
+        distance_to_surpass = 20 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
         for obs in obstacles:
             #chiamo la funzione mettendomi nelle condizioni di guardare solo davanti a me
             obstacle_state, obstacle, _ = self._our_vehicle_obstacle_detected([obs], np.inf, up_angle_th=60)
@@ -703,7 +703,10 @@ class BehaviorAgent(BasicAgent):
             #se il collidente è in movimento devo valutare anche lo spazio che potrà percorrere mentre io non conccludo il sorpasso
             #altrimenti devo valutare solo la sua posizione:
             if poss_coll_speed != 0: #il possibile colidente è in movimento
-                space_poss_coll = poss_coll_speed * time_to_surpass #spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
+                #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
+                collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
+                space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
+                #space_poss_coll = poss_coll_speed * time_to_surpass 
                 poss_coll_arrive_wpt = (possible_collident_wpt.next(space_poss_coll))[0] #waypoint a cui il possibile collidente arriverà nel tempo da me richiesto per il sorpasso
                 print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
                 print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
@@ -711,6 +714,7 @@ class BehaviorAgent(BasicAgent):
                 first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
                 second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
                 if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
+                    print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                     print("Sto per ritornare True")
                     input()
                     return True
@@ -730,135 +734,136 @@ class BehaviorAgent(BasicAgent):
             return True
 
 
-    def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
-        self._surpassing_obj = True
-        last_dir = self._direction
-        if dir == "left":
-            self._direction = RoadOption.CHANGELANELEFT
-        elif dir == "right":
-            # # print("sorpasso a destra")
-            # #input()
-            self._direction = RoadOption.CHANGELANERIGHT
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        
-        # if dir == "right":
-        # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
-            #input()
-        #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
-        if self.cond_to_start_surpass(ego_vehicle_wp):
-            # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
-            # input()
-            #self._my_flag = True
-            self._before_surpass_lane_id = ego_vehicle_wp.lane_id
-            #self.help_sorpassing(ego_vehicle_wp,'left')
-            self._local_planner._change_line = "shifting"
-            self._local_planner.delta = self.meters_shifting(obj_to_s)
-            # print(self._local_planner.delta)
-            self._local_planner.dir = dir
-            if dir != "right":
-                self._local_planner.set_speed(80) # da cambiare
-            else:
-                self._local_planner.set_speed(get_speed(self._vehicle) * (2/3))
-            self.surpass_vehicle = obj_to_s
-            # print('sto superando')
-            self._direction = last_dir
-            # input()
+
+def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
+    self._surpassing_obj = True
+    last_dir = self._direction
+    if dir == "left":
+        self._direction = RoadOption.CHANGELANELEFT
+    elif dir == "right":
+        # # print("sorpasso a destra")
+        # #input()
+        self._direction = RoadOption.CHANGELANERIGHT
+    com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+    
+    # if dir == "right":
+    # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
+        #input()
+    #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
+    if self.cond_to_start_surpass(ego_vehicle_wp):
+        # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
+        # input()
+        #self._my_flag = True
+        self._before_surpass_lane_id = ego_vehicle_wp.lane_id
+        #self.help_sorpassing(ego_vehicle_wp,'left')
+        self._local_planner._change_line = "shifting"
+        self._local_planner.delta = self.meters_shifting(obj_to_s)
+        # print(self._local_planner.delta)
+        self._local_planner.dir = dir
+        if dir != "right":
+            self._local_planner.set_speed(80) # da cambiare
+        else:
+            self._local_planner.set_speed(get_speed(self._vehicle) * (2/3))
+        self.surpass_vehicle = obj_to_s
+        # print('sto superando')
+        self._direction = last_dir
+        # input()
+        return True
+    else:
+        self._surpassing_obj = False
+        self._direction = last_dir
+        # print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
+    return False
+
+def end_surpassing(self, ego_vehicle_wp):
+    last_dir = self._direction
+    if self._local_planner._change_line=="left":
+        self._direction = RoadOption.CHANGELANERIGHT
+    elif self._local_planner._change_line=="right":        
+        self._direction = RoadOption.CHANGELANELEFT
+    com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+    com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
+    self._direction = last_dir
+    # if self._local_planner._change_line != "None":
+        # print("non mi rientrare com_vehicle: ",com_vehicle)
+        #input()
+    if not com_vehicle_state and not com_obj_state:
+        if self.surpassing_security_step > 3:
+            # print('STO PER RIENTRARE IN CORSIA')
+            ##input()
+            self.surpass_vehicle = None
+            self._local_planner._change_line = "None"
+            self._local_planner.delta = 0
+            self._local_planner.dir = "left"
+            self._surpassing_obj = False
+            self._before_surpass_lane_id = None
+            self.surpassing_security_step = 0
             return True
         else:
-            self._surpassing_obj = False
-            self._direction = last_dir
-            # print('CI STA UN TIZIO CHE NON MI FA SORPASSARE LA DIST: ', com_vehicle_distance, "ed è: ", com_vehicle)
-        return False
-
-    def end_surpassing(self, ego_vehicle_wp):
-        last_dir = self._direction
-        if self._local_planner._change_line=="left":
-            self._direction = RoadOption.CHANGELANERIGHT
-        elif self._local_planner._change_line=="right":        
-            self._direction = RoadOption.CHANGELANELEFT
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
-        self._direction = last_dir
-        # if self._local_planner._change_line != "None":
-            # print("non mi rientrare com_vehicle: ",com_vehicle)
-            #input()
-        if not com_vehicle_state and not com_obj_state:
-            if self.surpassing_security_step > 3:
-                # print('STO PER RIENTRARE IN CORSIA')
-                ##input()
-                self.surpass_vehicle = None
-                self._local_planner._change_line = "None"
-                self._local_planner.delta = 0
-                self._local_planner.dir = "left"
-                self._surpassing_obj = False
-                self._before_surpass_lane_id = None
-                self.surpassing_security_step = 0
-                return True
-            else:
-                self.surpassing_security_step += 1
-                # print("self.surpassing_security_step: ", self.surpassing_security_step)
-                # input()
-        return False
-            
-    def obstacle_avoidance(self, obj_dict, waypoint, ego_vertexs_lane_id):
-        valori = []
-        for valore in obj_dict.values():
-            if valore[0]:
-                valori.append(valore[1])
-        ordered_objs,dists = self.order_by_dist(valori, waypoint, 45, True)
-        if len(ordered_objs) > 0:
-            # print(ordered_objs[0])
-            # print('dists[0][1]',dists[0][1])
-            # print("state 1")
-            ##input()
-            obj_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(ordered_objs[0])
-            obj_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in obj_bb_coords]
-            int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
-            # print("obj_vertexs_lane_id: ", obj_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
-            draw_bbox(self._world, ordered_objs[0])
-            not_my_lane_list = list(set(obj_vertexs_lane_id) - set(int_list))
-            if len(int_list)>0 and len(not_my_lane_list) == 0:
-                # print('len(int_list): ',len(int_list),'len(not_my_lane_list): ',len(not_my_lane_list))
-                # print('ordered_objs[0].type_id: ',ordered_objs[0].type_id)
-                # logica per cominciare il sorpasso        
-                if ordered_objs[0].type_id in ['vehicle.bh.crossbike','vehicle.gazelle.omafiets','vehicle.diamondback.century']:
-                    target_forward_vector = ordered_objs[0].get_transform().get_forward_vector()
-                    ego_forward_vector = self._vehicle.get_transform().get_forward_vector()
-                    cond = abs(np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z]))) < 0.3
-                    if dists[0][1]<10 and get_speed(ordered_objs[0]) <= 20 and not self._surpassing_obj and not cond:
-                        if self.start_surpassing(ordered_objs[0], waypoint, "left"):
-                            #input()
-                            return True
-                if 'vehicle' in ordered_objs[0].type_id:
-                #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
-                    if dists[0][1]<20 and ordered_objs[0].get_light_state() in [1537,1539, 49] and not self._surpassing_obj:
-                        if self.start_surpassing(ordered_objs[0], waypoint, "left"):
-                            #input()
-                            return True
-                if ordered_objs[0].type_id in ['static.prop.trafficwarning','static.prop.warningaccident']:
-                #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
-                    if dists[0][1]<20 and not self._surpassing_obj:
-                        if self.start_surpassing(ordered_objs[0], waypoint, "left"):
-                            # print('start surpassing obj')
-                            #input()
-                            return True
-            #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
-            elif len(int_list)>0:
-                # print("state 2")
-                # #input()
-                # print("len(int_list): ", len(int_list), "len(not_my_lane_list): ", len(not_my_lane_list))
-                if not_my_lane_list[0] > waypoint.lane_id:
-                    # print("not_my_lane_list[0]: ", not_my_lane_list[0], "waypoint.lane_id: ", waypoint.lane_id)
+            self.surpassing_security_step += 1
+            # print("self.surpassing_security_step: ", self.surpassing_security_step)
+            # input()
+    return False
+        
+def obstacle_avoidance(self, obj_dict, waypoint, ego_vertexs_lane_id):
+    valori = []
+    for valore in obj_dict.values():
+        if valore[0]:
+            valori.append(valore[1])
+    ordered_objs,dists = self.order_by_dist(valori, waypoint, 45, True)
+    if len(ordered_objs) > 0:
+        # print(ordered_objs[0])
+        # print('dists[0][1]',dists[0][1])
+        # print("state 1")
+        ##input()
+        obj_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(ordered_objs[0])
+        obj_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in obj_bb_coords]
+        int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
+        # print("obj_vertexs_lane_id: ", obj_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
+        draw_bbox(self._world, ordered_objs[0])
+        not_my_lane_list = list(set(obj_vertexs_lane_id) - set(int_list))
+        if len(int_list)>0 and len(not_my_lane_list) == 0:
+            # print('len(int_list): ',len(int_list),'len(not_my_lane_list): ',len(not_my_lane_list))
+            # print('ordered_objs[0].type_id: ',ordered_objs[0].type_id)
+            # logica per cominciare il sorpasso        
+            if ordered_objs[0].type_id in ['vehicle.bh.crossbike','vehicle.gazelle.omafiets','vehicle.diamondback.century']:
+                target_forward_vector = ordered_objs[0].get_transform().get_forward_vector()
+                ego_forward_vector = self._vehicle.get_transform().get_forward_vector()
+                cond = abs(np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z]))) < 0.3
+                if dists[0][1]<10 and get_speed(ordered_objs[0]) <= 20 and not self._surpassing_obj and not cond:
                     if self.start_surpassing(ordered_objs[0], waypoint, "left"):
-                        # print("state 3")
                         #input()
                         return True
-                else:
-                    if self.start_surpassing(ordered_objs[0], waypoint, "right"): 
-                        # print("state 3.1")
+            if 'vehicle' in ordered_objs[0].type_id:
+            #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
+                if dists[0][1]<20 and ordered_objs[0].get_light_state() in [1537,1539, 49] and not self._surpassing_obj:
+                    if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                         #input()
                         return True
-        return False
+            if ordered_objs[0].type_id in ['static.prop.trafficwarning','static.prop.warningaccident']:
+            #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
+                if dists[0][1]<20 and not self._surpassing_obj:
+                    if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                        # print('start surpassing obj')
+                        #input()
+                        return True
+        #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
+        elif len(int_list)>0:
+            # print("state 2")
+            # #input()
+            # print("len(int_list): ", len(int_list), "len(not_my_lane_list): ", len(not_my_lane_list))
+            if not_my_lane_list[0] > waypoint.lane_id:
+                # print("not_my_lane_list[0]: ", not_my_lane_list[0], "waypoint.lane_id: ", waypoint.lane_id)
+                if self.start_surpassing(ordered_objs[0], waypoint, "left"):
+                    # print("state 3")
+                    #input()
+                    return True
+            else:
+                if self.start_surpassing(ordered_objs[0], waypoint, "right"): 
+                    # print("state 3.1")
+                    #input()
+                    return True
+    return False
 
     def meters_shifting(self, target_vehicle):
         sec_costant = 0.9
