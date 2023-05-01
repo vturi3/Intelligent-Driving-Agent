@@ -761,7 +761,7 @@ class BehaviorAgent(BasicAgent):
         # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
             #input()
         if obj_to_s:
-            if cond_to_start_surpass(ego_vehicle_wp):
+            if self.cond_to_start_surpass(ego_vehicle_wp):
             #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
