@@ -646,7 +646,7 @@ class BehaviorAgent(BasicAgent):
             
             #devo ottenere informazioni sui veicoli da sorpassare: devono essere completamente o parzialmente nella mia lane e devono essere davanti a me:
             to_surpass = [] #conterrà tutti i veicoli che dovrò sorpassare
-            distance_to_surpass = 20 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
+            distance_to_surpass = 25 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
             for obs in obstacles:
                 #chiamo la funzione mettendomi nelle condizioni di guardare solo davanti a me
                 obstacle_state, obstacle, _ = self._our_vehicle_obstacle_detected([obs], np.inf, up_angle_th=60)
@@ -685,7 +685,7 @@ class BehaviorAgent(BasicAgent):
             my_end_velocity = math.sqrt(2*standard_acceleration*distance_to_surpass + pow(my_start_velocity,2))#velocità finale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
             print("mia velocità finale in assoluto: ", my_end_velocity, "mia velocità finale relativa: ", my_end_relative_velocity)
             time_to_surpass = (my_end_relative_velocity - my_start_relative_velocity)/standard_acceleration #tempo richiesto per completare il sorpasso
-            print("IL totale spazio da sorpassare è: ", distance_to_surpass,"il tempo richiesto è: ", time_to_surpass)
+            print("Il totale spazio da sorpassare è: ", distance_to_surpass,"il tempo richiesto è: ", time_to_surpass)
             print("la mia velocità è: ", get_speed(self._vehicle), "la mia accelerazione è:", self._vehicle.get_acceleration())
             #ora devo calcolare il punto reale a cui io arriverò, quindi il reale spazio che ho percorso
             real_distance = (0.5*standard_acceleration*pow(time_to_surpass,2)) + (my_start_velocity*time_to_surpass) #reale distanza percorsa
@@ -726,7 +726,6 @@ class BehaviorAgent(BasicAgent):
                     print("il to arrive si trova: ", to_arrive.transform.location)
                     first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
                     second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
-                    distance_to_surpass = max(distance_to_surpass, 90)
                     if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
                         print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                         print("Sto per ritornare True")
@@ -742,7 +741,6 @@ class BehaviorAgent(BasicAgent):
                     distance_to_surpass = distance_to_surpass + 30
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
                     # input()
-                    distance_to_surpass = max(distance_to_surpass, 90)
                     return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass
             else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
                 print("Sto per ritornare True ma sono nell'ultimo else")
