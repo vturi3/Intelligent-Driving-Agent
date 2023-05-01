@@ -13,6 +13,8 @@ import carla
 from shapely.geometry import Polygon
 from shapely.validation import explain_validity
 
+import math
+
 from local_planner import LocalPlanner, RoadOption
 from global_route_planner import GlobalRoutePlanner
 from datetime import datetime,timedelta
@@ -636,12 +638,17 @@ class BasicAgent(object):
             
             factor = 1
 
+        if vehicle.type_id.split('.')[0] == 'walker':
+            factor = 5
         # calcola la quantità di spostamento lungo l'asse X
         x_offset = bbox_extent.x * factor
 
+        # x_offset = bbox_extent.x * factor
         # print("BBOX: velocity  ", velocity)
         # print("BBOX: fattore moltiplicativo ", factor)
         # print("BBOX: offset ", x_offset)
+        
+        # input()
 
         # calcola le nuove dimensioni del bounding box
         new_bbox_extent = carla.Vector3D(x=x_offset, y=bbox_extent.y, z=2)
@@ -860,10 +867,16 @@ class BasicAgent(object):
         # Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
         # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. 
         # Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
+
+        hero_vertices = self._vehicle.bounding_box.get_world_vertices(ego_transform)
+        hero_list = [[v.x, v.y, v.z] for v in hero_vertices]
+        hero_polygon = Polygon(hero_list)
+        ffv_hero_vehicle = ego_transform.get_forward_vector()
+
         for target_vehicle in vehicle_list:
             if ego_location.distance(target_vehicle.get_location()) > max_distance*4:
                 continue
-
+        
             target_bb,new_transform = self.allunga_bounding_box(target_vehicle)
             
             target_vertices = target_bb.get_world_vertices(new_transform)
@@ -872,6 +885,20 @@ class BasicAgent(object):
 
             if ego_polygon.intersects(target_polygon):
                 print('INTERSECTION: Colpisco boundingBox')
+                if hero_polygon.intersects(target_polygon):
+
+                    ffv_target_vehicle = target_vehicle.get_transform().get_forward_vector()
+
+                    angle = math.degrees(math.acos(ffv_hero_vehicle.dot(ffv_target_vehicle)))
+
+                    print(angle)
+                    
+                    if angle < 45:
+                        print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
+                        return (False, None, -1)
+
+
+                input()
                 #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
                 return (True, target_vehicle, 0.1)
 
