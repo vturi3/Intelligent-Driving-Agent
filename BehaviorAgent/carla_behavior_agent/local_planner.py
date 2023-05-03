@@ -301,10 +301,13 @@ class LocalPlanner(object):
                     shift = -1
                 real_delta = self.delta * shift
                 left_lane_waypoint = self.target_waypoint.get_left_lane()
-                diff = np.array([left_lane_waypoint.transform.location.x - self.target_waypoint.transform.location.x,
-                                left_lane_waypoint.transform.location.y - self.target_waypoint.transform.location.y,
-                                left_lane_waypoint.transform.location.z - self.target_waypoint.transform.location.z])
-                diff_norm = np.linalg.norm(diff)
+                diff_norm = 0
+                new_waypoint = self.target_waypoint
+                if left_lane_waypoint:
+                    diff = np.array([left_lane_waypoint.transform.location.x - self.target_waypoint.transform.location.x,
+                                    left_lane_waypoint.transform.location.y - self.target_waypoint.transform.location.y,
+                                    left_lane_waypoint.transform.location.z - self.target_waypoint.transform.location.z])
+                    diff_norm = np.linalg.norm(diff)
                 if diff_norm > 0:
                     diff_normalized = diff / diff_norm
                     print("diff_normalized: ", diff_normalized)

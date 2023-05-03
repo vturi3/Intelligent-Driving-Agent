@@ -612,7 +612,7 @@ class BasicAgent(object):
 
         return (False, None, -1)
 
-    def allunga_bounding_box(self,vehicle, alpha=0.115):
+    def allunga_bounding_box(self,vehicle, alpha=0.09):
         """
         Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
 
@@ -658,9 +658,11 @@ class BasicAgent(object):
         vehicle_transform = vehicle.get_transform()
         vehicle_ffVector_x = vehicle_transform.get_forward_vector().x
         vehicle_ffVector_y = vehicle_transform.get_forward_vector().y
-
-        spostamento_x = vehicle_ffVector_x * (x_offset-bbox_extent.x)
-        spostamento_y = vehicle_ffVector_y * (x_offset-bbox_extent.x)
+        spostamento_x = 0
+        spostamento_y = 0
+        if factor >1:
+            spostamento_x = vehicle_ffVector_x * (x_offset)
+            spostamento_y = vehicle_ffVector_y * (x_offset)
 
         new_location = carla.Location(x=vehicle_transform.location.x + spostamento_x, y=vehicle_transform.location.y + spostamento_y, z=vehicle_transform.location.z) 
 
@@ -897,8 +899,6 @@ class BasicAgent(object):
                         print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
                         return (False, None, -1)
 
-
-                input()
                 #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
                 return (True, target_vehicle, 0.1)
 
