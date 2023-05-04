@@ -559,6 +559,9 @@ class BehaviorAgent(BasicAgent):
                         return self.controlled_stop(static_obj, obs_distance)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
+            self._local_planner.set_speed(20)
+            control = self._local_planner.run_step(debug=debug)
+
             vehicle_state, vehicle, v_distance = self.gestione_incrocio(ego_vehicle_wp)
             # stesso principio del pedone.
             if vehicle_state:
@@ -576,12 +579,13 @@ class BehaviorAgent(BasicAgent):
                         return self.controlled_stop(vehicle, v_distance,minDistance=2)
                     else:
                         return self.car_following_manager(vehicle, v_distance)
+            return control
 
         # 4: Normal behavior, prende target speed, è una variabile che ti dice quanto manca a quello che ti serve. Il local planer contiene anche i controllori, quindi gli stiamo dicendo anche questo. Obj control contiene cose di carla sul dafarsi
         # print("NORMAL BEHAVIOUR")
         # input()
         target_speed = min([
-            self._behavior.max_speed,
+            self._vehicle.get_speed_limit(),
             self._speed_limit - self._behavior.speed_lim_dist])
         if self._surpassing_obj:
             self._local_planner.set_speed(80)
