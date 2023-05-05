@@ -895,16 +895,16 @@ class BasicAgent(object):
             if ego_polygon.intersects(target_polygon):
                 print('INTERSECTION: Colpisco boundingBox')
                 if hero_polygon.intersects(target_polygon):
-
                     ffv_target_vehicle = target_vehicle.get_transform().get_forward_vector()
 
                     angle = math.degrees(math.acos(ffv_hero_vehicle.dot(ffv_target_vehicle)))
 
-                    print(angle)
-                    
-                    if angle < 45:
-                        print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
-                        return (False, None, -1)
+                    print(angle, target_vehicle)
+
+                    if target_vehicle.get_transform().location.distance(wp.transform.location) > ego_location.distance(wp.transform.location):
+                        if angle < 45:
+                            print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
+                            return (False, None, -1)
 
                 #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))
                 return (True, target_vehicle, 0.1)
