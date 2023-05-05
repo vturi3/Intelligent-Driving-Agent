@@ -71,7 +71,7 @@ class BasicAgent(object):
         self._target_speed = 5.0
         self._sampling_resolution = 2.0
         self._base_tlight_threshold = 5.0  # meters
-        self._base_stop_threshold = 3.0  # meters
+        self._base_stop_threshold = 4.0  # meters
         self._base_vehicle_threshold = 5.0  # meters
         self._speed_ratio = 1
         self._max_brake = 0.5
@@ -345,6 +345,8 @@ class BasicAgent(object):
 
         if not max_distance:
             max_distance = self._base_stop_threshold*2
+            print("self._base_stop_threshold: ", self._base_stop_threshold*2)
+        print("max_distance: ", max_distance)
         # qua verifico se mi sono gia fermato allo step precedete.
         if self._last_time_stop_sign:
             # qua devo verificare se posso andare avanti ritornando quindi un vuoto o eventualmente un altro !
@@ -382,15 +384,20 @@ class BasicAgent(object):
             ve_dir = ego_vehicle_waypoint.transform.get_forward_vector()
             wp_dir = trigger_wp.transform.get_forward_vector() 
             dot_ve_wp = ve_dir.x * wp_dir.x + ve_dir.y * wp_dir.y + ve_dir.z * wp_dir.z
+            print("devo ceccare se ci sta uno stop (ci sta ma non se va bene): ")
 
             if dot_ve_wp < 0:
                 continue
 
-            if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]) and self._last_stop_signid != stop_sign.id:
+            if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [-30, 30]) and self._last_stop_signid != stop_sign.id:
                 if dist_from_stop < 2.5:
                     self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
                     self._last_stop_signid = stop_sign.id
+                print("ho visto uno stop si trova a: ", stop_sign, "dista: ", dist_from_stop)
+                # input()
                 return (True, stop_sign,dist_from_stop)
+            else:
+                print("ho visto che non sta sulla mia strada")
 
         return (False, None,0.0)
     

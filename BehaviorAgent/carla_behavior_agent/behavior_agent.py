@@ -420,7 +420,7 @@ class BehaviorAgent(BasicAgent):
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         affected_by_stop,dist_from_stop = self.stop_sign_manager()
         if affected_by_stop:
-            # #print("sto in stop_sign")
+            print("sto in stop_sign")
             return self.controlled_stop(distance=dist_from_stop,minDistance=2)
         
 
@@ -526,6 +526,8 @@ class BehaviorAgent(BasicAgent):
                     delta_v = 0
                 # Emergency brake if the car is very close.
                 if (obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.2) or (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5):
+                    print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
+                    #input()
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
                 else:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
@@ -615,14 +617,14 @@ class BehaviorAgent(BasicAgent):
         if distance <= minDistance:
             return control
         elif self._speed < 5 and distance > minDistance:
-            target_speed = max(min(distance * 3, get_speed(self._vehicle)), 2)
+            target_speed = max(min(distance * 3, get_speed(self._vehicle)), 3)
             print("self._speed < 15 and distance > minDistance: ", self._speed, minDistance, "target_speed")
             # input()
             # print("devo rallentare sono ancora lontano, l'obj vel è:",vehicle_speed," velocità: ", target_speed)
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
         elif ttc > 0.0:
-            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.3, self._speed-self._behavior.speed_decrease)
+            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.2, self._speed-self._behavior.speed_decrease*2)
             print("ttc: ", ttc, "target_speed: ", target_speed)
             # input()
             # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
@@ -716,10 +718,13 @@ class BehaviorAgent(BasicAgent):
                 #se il collidente è in movimento devo valutare anche lo spazio che potrà percorrere mentre io non conccludo il sorpasso
                 #altrimenti devo valutare solo la sua posizione:
                 if poss_coll_speed != 0: #il possibile colidente è in movimento
+                    print("poss_coll_speed è diverso da zero")
                     #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
-                    #collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
-                    #space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
-                    space_poss_coll = poss_coll_speed * time_to_surpass 
+                    collident_acceleration = min(np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z])), 20)
+                    print("colldent acceleration: ", collident_acceleration)
+                    space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
+                    print("space_poss_coll", space_poss_coll)
+                    #space_poss_coll = poss_coll_speed * time_to_surpass 
                     poss_coll_arrive_wpt = (possible_collident_wpt.next(space_poss_coll))[0] #waypoint a cui il possibile collidente arriverà nel tempo da me richiesto per il sorpasso
                     print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
                     print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
@@ -738,7 +743,8 @@ class BehaviorAgent(BasicAgent):
                 else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                     print("il possible collident è fermo")
                     print("il to arrive si trova: ", to_arrive.transform.location)
-                    distance_to_surpass = distance_to_surpass + 30
+                    distance_to_surpass = distance_to_surpass + self._vehicle.get_speed_limit()*2/3
+                    print("possible_collident.get_speed_limit()*2/3: ", self._vehicle.get_speed_limit())
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
                     # input()
                     return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass
