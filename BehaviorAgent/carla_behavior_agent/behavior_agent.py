@@ -284,7 +284,7 @@ class BehaviorAgent(BasicAgent):
         bikers_list += list(self._world.get_actors().filter("*vehicle.gazelle.omafiets*"))
         bikers_list += list(self._world.get_actors().filter("*vehicle.diamondback.century*"))
 
-        bikers_list, dists = self.order_by_dist(bikers_list, waypoint, 45)
+        bikers_list, dists = self.order_by_dist(bikers_list, waypoint, 80)
 
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
@@ -299,15 +299,14 @@ class BehaviorAgent(BasicAgent):
         #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
         #filtrare tutt gli ostacoli statici
         static_obj_list = self._world.get_actors().filter("*static.prop*")
-        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, 45,True)
-
+        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, 80,True)
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
         elif self._direction == RoadOption.CHANGELANERIGHT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, 80, up_angle_th=60)
         return static_obj_state, static_obj, distance
 
     def car_following_manager(self, vehicle, distance, debug=False):
@@ -557,7 +556,6 @@ class BehaviorAgent(BasicAgent):
                     delta_v =  self._speed - get_speed(static_obj)
                     if delta_v < 0:
                         delta_v = 0
-                    target_speed = self._speed
                     # Emergency brake if the car is very close.
                     if obs_distance < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.7:
                         return self.controlled_stop(static_obj, obs_distance)
@@ -589,7 +587,7 @@ class BehaviorAgent(BasicAgent):
         # input()
         if target_speed is None:
             target_speed = min([
-                self._behavior.max_speed,
+                self._vehicle.get_speed_limit(),
                 self._speed_limit - self._behavior.speed_lim_dist])
         if self._surpassing_obj:
             self._local_planner.set_speed(80)
@@ -693,16 +691,19 @@ class BehaviorAgent(BasicAgent):
             #ora devo calcolare il punto reale a cui io arriverò, quindi il reale spazio che ho percorso
             real_distance = (0.5*standard_acceleration*pow(time_to_surpass,2)) + (my_start_velocity*time_to_surpass) #reale distanza percorsa
             to_arrive = ego_vehicle_wp.next(real_distance)[0] #waypoint a cui arriverò dopo aver superato
-
-            #ottengo i waypoint corrispettivi sulla lane che invaderò per il sorpasso
-            if self._direction == RoadOption.CHANGELANERIGHT:
-                offset = 1
-                corr_ego_wpt = ego_vehicle_wp.get_right_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
-                corr_to_arrive = to_arrive.get_right_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
-            elif self._direction == RoadOption.CHANGELANELEFT:
-                offset = -1
-                corr_ego_wpt = ego_vehicle_wp.get_left_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
-                corr_to_arrive = to_arrive.get_left_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+            try:
+                #ottengo i waypoint corrispettivi sulla lane che invaderò per il sorpasso
+                if self._direction == RoadOption.CHANGELANERIGHT:
+                    offset = 1
+                    corr_ego_wpt = ego_vehicle_wp.get_right_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
+                    corr_to_arrive = to_arrive.get_right_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+                elif self._direction == RoadOption.CHANGELANELEFT:
+                    offset = -1
+                    corr_ego_wpt = ego_vehicle_wp.get_left_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
+                    corr_to_arrive = to_arrive.get_left_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+            except:
+                print("Sto per ritornare False")
+                return False
             
             #analizzo se sull'altra corsia che sto andando ad invadere posso avere delle possibili collisioni
             possible_collident = None #possibile ostacolo con cui colliderei nella lane che invaderò
@@ -771,6 +772,7 @@ class BehaviorAgent(BasicAgent):
             #input()
         if obj_to_s:
             if self.cond_to_start_surpass(ego_vehicle_wp):
+                input('sono suprs')
             #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
@@ -849,7 +851,7 @@ class BehaviorAgent(BasicAgent):
                 print('len(int_list): ',len(int_list),'len(not_my_lane_list): ',len(not_my_lane_list))
                 # print('ordered_objs[0].type_id: ',ordered_objs[0].type_id)
                 # logica per cominciare il sorpasso  
-                input()      
+                # input()      
                 if ordered_objs[0].type_id in ['vehicle.bh.crossbike','vehicle.gazelle.omafiets','vehicle.diamondback.century']:
                     target_forward_vector = ordered_objs[0].get_transform().get_forward_vector()
                     ego_forward_vector = self._vehicle.get_transform().get_forward_vector()
@@ -857,14 +859,14 @@ class BehaviorAgent(BasicAgent):
                     if dists[0][1]<15 and get_speed(ordered_objs[0]) <= 20 and not self._surpassing_obj and not cond:
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             print("crossbike object surpass")
-                            input()
+                            # input()
                             return True
                 if 'vehicle' in ordered_objs[0].type_id:
                 #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
                     if dists[0][1]<20 and ordered_objs[0].get_light_state() in [1537,1539, 49] and not self._surpassing_obj and get_speed(ordered_objs[0]) <= 3:
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             print("vehicle object surpass")
-                            input()
+                            # input()
                             return True
                 if ordered_objs[0].type_id in ['static.prop.trafficwarning','static.prop.warningaccident']:
                 #type_id, vanno aggiunte altre condizioni, per altri obj statici in mezzo road o generalizzare con location vicino awaypoint road
@@ -872,7 +874,7 @@ class BehaviorAgent(BasicAgent):
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             # print('start surpassing obj')
                             print("static object surpass")
-                            input()
+                            # input()
                             return True
             #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
             elif len(int_list)>0:
@@ -884,7 +886,7 @@ class BehaviorAgent(BasicAgent):
                     if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                         print("ordered_objs[0]: ", ordered_objs[0])
                         # print("state 3")
-                        input()
+                        # input()
                         return True
                 else:
                     if self.start_surpassing(ordered_objs[0], waypoint, "right"): 
