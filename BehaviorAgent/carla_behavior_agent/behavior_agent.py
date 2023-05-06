@@ -299,7 +299,7 @@ class BehaviorAgent(BasicAgent):
         #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
         #filtrare tutt gli ostacoli statici
         static_obj_list = self._world.get_actors().filter("*static.prop*")
-        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, 45)
+        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, 45,True)
 
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
@@ -388,7 +388,7 @@ class BehaviorAgent(BasicAgent):
         ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
         
         if False:
-            # print(ego_vehicle_loc)
+            print(ego_vehicle_loc)
             input()
         
         vehicle_list = self._world.get_actors().filter("*vehicle*")
@@ -504,7 +504,7 @@ class BehaviorAgent(BasicAgent):
                 # input()
                 # Emergency brake if the car is very close.
                 if obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v * 0.2:
-                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
+                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3.5)
                 else:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
         # 2.2: Car following behaviors
@@ -838,7 +838,7 @@ class BehaviorAgent(BasicAgent):
             # print("state 1")
             # input()
             obj_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(ordered_objs[0])
-            obj_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in obj_bb_coords]
+            obj_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in obj_bb_coords]
             int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
             print("obj_vertexs_lane_id: ", obj_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
             draw_bbox(self._world, ordered_objs[0])
