@@ -159,7 +159,7 @@ class LocalPlanner(object):
             print("WARNING: The max speed is currently set to follow the speed limits. "
                   "Use 'follow_speed_limits' to deactivate this")"""
         limit = self._vehicle.get_speed_limit()
-        print("LIMITE DI VEL: ",limit)
+        print("LIMITE DI VEL: ",limit,'noi stiamo andando a ', get_speed(self._vehicle))
         if speed > limit:
             print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
             self._target_speed = limit

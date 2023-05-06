@@ -183,8 +183,7 @@ class BehaviorAgent(BasicAgent):
                     self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
-                vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+                vehicle_list, 80, up_angle_th=60)
             # tiene in considerazione anche
             # Check for tailgating
             if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
@@ -497,7 +496,6 @@ class BehaviorAgent(BasicAgent):
                 delta_v =  self._speed - get_speed(obstacle_dict["biker"][1])
                 if delta_v < 0:
                     delta_v = 0
-                target_speed = self._speed
                 print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_obj:
                 # input()
@@ -524,7 +522,6 @@ class BehaviorAgent(BasicAgent):
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
                 if delta_v < 0:
                     delta_v = 0
-                target_speed = self._speed
                 # Emergency brake if the car is very close.
                 if (obstacle_dict["vehicle"][2] < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.7) or (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5):
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
@@ -586,9 +583,7 @@ class BehaviorAgent(BasicAgent):
         print("NORMAL BEHAVIOUR")
         # input()
         if target_speed is None:
-            target_speed = min([
-                self._vehicle.get_speed_limit(),
-                self._speed_limit - self._behavior.speed_lim_dist])
+            target_speed = self._vehicle.get_speed_limit()
         if self._surpassing_obj:
             self._local_planner.set_speed(80)
         else:
@@ -691,19 +686,17 @@ class BehaviorAgent(BasicAgent):
             #ora devo calcolare il punto reale a cui io arriverò, quindi il reale spazio che ho percorso
             real_distance = (0.5*standard_acceleration*pow(time_to_surpass,2)) + (my_start_velocity*time_to_surpass) #reale distanza percorsa
             to_arrive = ego_vehicle_wp.next(real_distance)[0] #waypoint a cui arriverò dopo aver superato
-            try:
-                #ottengo i waypoint corrispettivi sulla lane che invaderò per il sorpasso
-                if self._direction == RoadOption.CHANGELANERIGHT:
-                    offset = 1
-                    corr_ego_wpt = ego_vehicle_wp.get_right_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
-                    corr_to_arrive = to_arrive.get_right_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
-                elif self._direction == RoadOption.CHANGELANELEFT:
-                    offset = -1
-                    corr_ego_wpt = ego_vehicle_wp.get_left_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
-                    corr_to_arrive = to_arrive.get_left_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
-            except:
-                print("Sto per ritornare False")
-                return False
+        
+            #ottengo i waypoint corrispettivi sulla lane che invaderò per il sorpasso
+            if self._direction == RoadOption.CHANGELANERIGHT:
+                offset = 1
+                corr_ego_wpt = ego_vehicle_wp.get_right_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
+                corr_to_arrive = to_arrive.get_right_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+            elif self._direction == RoadOption.CHANGELANELEFT:
+                offset = -1
+                corr_ego_wpt = ego_vehicle_wp.get_left_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
+                corr_to_arrive = to_arrive.get_left_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+            
             
             #analizzo se sull'altra corsia che sto andando ad invadere posso avere delle possibili collisioni
             possible_collident = None #possibile ostacolo con cui colliderei nella lane che invaderò
@@ -731,8 +724,11 @@ class BehaviorAgent(BasicAgent):
                     print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
                     print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
                     print("il to arrive si trova: ", to_arrive.transform.location)
-                    first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
-                    second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
+                    try:
+                        first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
+                        second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
+                    except:
+                        return False,last_surpass
                     if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
                         print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                         print("Sto per ritornare True")
@@ -773,7 +769,7 @@ class BehaviorAgent(BasicAgent):
         if obj_to_s:
             enable, last_surpass = self.cond_to_start_surpass(ego_vehicle_wp)
             if enable:
-                input()
+                #input()
             #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
