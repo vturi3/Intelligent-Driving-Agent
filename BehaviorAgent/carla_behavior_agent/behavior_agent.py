@@ -400,7 +400,12 @@ class BehaviorAgent(BasicAgent):
         #     draw_bbox(self._world, act)
 
         target_speed = None
-        min_distance_for_em_stop = 3
+        min_distance_for_em_stop = 3 
+        
+        #set some parameters for controlled stop:
+        max_real_accel = 3.86 #in m/s^2
+        security_distance = 4 #significa che si fermerà 3 metri prima dell'ostacolo
+        my_velocity = self._vehicle.get_velocity() #3d vector in m/s^2
         # for actor_snapshot in vehicle_list_red:
         #     draw_bbox(self._world, actor_snapshot)
 
@@ -452,7 +457,7 @@ class BehaviorAgent(BasicAgent):
             delta_v =  self._speed - get_speed(obstacle_dict["walker"][1])
             if delta_v < 0:
                 delta_v = 0
-            decina = int(delta_v/10)
+            decina = delta_v/10
             quadrato_decina = decina ** 2
             # Emergency brake if the car is very close.
             if obstacle_dict["walker"][2] < max(quadrato_decina, min_distance_for_em_stop):
@@ -497,7 +502,7 @@ class BehaviorAgent(BasicAgent):
                 delta_v =  self._speed - get_speed(obstacle_dict["biker"][1])
                 if delta_v < 0:
                     delta_v = 0
-                decina = int(delta_v/10)
+                decina = delta_v/10
                 quadrato_decina = decina ** 2
                 print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_obj:
@@ -541,7 +546,7 @@ class BehaviorAgent(BasicAgent):
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
                 if delta_v < 0:
                     delta_v = 0
-                decina = int(delta_v/10)
+                decina = delta_v/10
                 quadrato_decina = decina ** 2
                 # Emergency brake if the car is very close.
                 if obstacle_dict["vehicle"][2] < max(quadrato_decina, min_distance_for_em_stop):
@@ -583,14 +588,10 @@ class BehaviorAgent(BasicAgent):
                     print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
                     input()
-                    delta_v =  self._speed - get_speed(static_obj)
-                    if delta_v < 0:
-                        delta_v = 0
-                    decina = int(delta_v/10)
-                    quadrato_decina = decina ** 2
-                    # Emergency brake if the car is very close.
-                    if obs_distance < max(quadrato_decina, min_distance_for_em_stop):
-                        return self.controlled_stop(static_obj, obs_distance, 4)
+                    
+                    distance_to_start_stop = self.compute_warning_distance(static_obj,max_real_accel, my_velocity)
+                    if obs_distance<= distance_to_start_stop + security_distance:
+                        return self.controlled_stop(static_obj, obs_distance, 8)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
             self._local_planner.set_speed(20)
@@ -640,11 +641,19 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
 
+    def compute_warning_distance(self,obstacle,max_real_accel, my_velocity):
+        obstacle_velocity = obstacle.get_velocity() #3d vector in m/s^2
+        my_relative_velocity = np.linalg.norm(np.array([ my_velocity.x - obstacle_velocity.x,my_velocity.y- obstacle_velocity.y, my_velocity.z - obstacle_velocity.z]))
+        distance_to_start_stop = (pow(my_relative_velocity,2))/(2*max_real_accel) #a che distanza devo iniziare a frenare 
+        print("comp war dist, obstacle_velocity: ", obstacle_velocity, "distance to start stop: ", distance_to_start_stop)
+        # input()
+        return distance_to_start_stop
+    
     def controlled_stop(self,t_vehicle=None, distance = 0.0, minDistance=4):
             my_velocity = self._vehicle.get_velocity()
             if distance<=minDistance:
                 print("vado in emergency")
-                input()
+                # input()
                 control = self.emergency_stop()
             else: 
                 norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
@@ -655,7 +664,7 @@ class BehaviorAgent(BasicAgent):
                 #target_speed = norm_velocity - (max_sim_accel*sim_time)
                 print("sono in decelerate, la target speed che sto settando è:", target_speed, "la mia vel è: ", norm_velocity)
                 self._local_planner.set_speed(target_speed * 3.6)
-                input()
+                # input()
                 control = self._local_planner.run_step()
             # per le derapate a True
             return control
