@@ -400,7 +400,7 @@ class BehaviorAgent(BasicAgent):
         #     draw_bbox(self._world, act)
 
         target_speed = None
-        min_distance_for_em_stop = 5
+        min_distance_for_em_stop = 3
         # for actor_snapshot in vehicle_list_red:
         #     draw_bbox(self._world, actor_snapshot)
 
@@ -452,8 +452,10 @@ class BehaviorAgent(BasicAgent):
             delta_v =  self._speed - get_speed(obstacle_dict["walker"][1])
             if delta_v < 0:
                 delta_v = 0
+            decina = int(delta_v/10)
+            quadrato_decina = decina ** 2
             # Emergency brake if the car is very close.
-            if obstacle_dict["walker"][2] < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.7:
+            if obstacle_dict["walker"][2] < max(quadrato_decina, min_distance_for_em_stop):
                 return self.controlled_stop(obstacle_dict["walker"][1], obstacle_dict["walker"][2],minDistance=3)
         
         # police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
@@ -495,13 +497,15 @@ class BehaviorAgent(BasicAgent):
                 delta_v =  self._speed - get_speed(obstacle_dict["biker"][1])
                 if delta_v < 0:
                     delta_v = 0
+                decina = int(delta_v/10)
+                quadrato_decina = decina ** 2
                 print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
                 #if self._surpassing_obj:
                 # input()
                 # Emergency brake if the car is very close.
-                if obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v * 0.5:
+                if obstacle_dict["biker"][2] < max(quadrato_decina, min_distance_for_em_stop):
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3.5)
-                elif obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v:
+                elif obstacle_dict["biker"][2] < 25:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
         # 2.2: Car following behaviors
         
@@ -534,12 +538,14 @@ class BehaviorAgent(BasicAgent):
                 delta_v =  self._speed - get_speed(obstacle_dict["vehicle"][1])
                 if delta_v < 0:
                     delta_v = 0
+                decina = int(delta_v/10)
+                quadrato_decina = decina ** 2
                 # Emergency brake if the car is very close.
-                if obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.5:
+                if obstacle_dict["vehicle"][2] < max(quadrato_decina, min_distance_for_em_stop):
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
                     # #input()
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
-                elif obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v:
+                elif obstacle_dict["vehicle"][2] < 30:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
@@ -565,8 +571,10 @@ class BehaviorAgent(BasicAgent):
                     delta_v =  self._speed - get_speed(static_obj)
                     if delta_v < 0:
                         delta_v = 0
+                    decina = int(delta_v/10)
+                    quadrato_decina = decina ** 2
                     # Emergency brake if the car is very close.
-                    if obs_distance < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.6:
+                    if obs_distance < max(quadrato_decina, min_distance_for_em_stop):
                         return self.controlled_stop(static_obj, obs_distance, 4)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
@@ -621,7 +629,7 @@ class BehaviorAgent(BasicAgent):
         vehicle_speed = 0.0
         if vehicle != None:
             vehicle_speed = get_speed(vehicle)
-        delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
+        delta_v = max(0.5, (self._speed - vehicle_speed) / 3.6)
         ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
         control = self.emergency_stop()
         print("sono in controlled, distance: ", distance)
@@ -630,9 +638,9 @@ class BehaviorAgent(BasicAgent):
         if distance <= minDistance:
             return control
         elif ttc > 0.0:
-            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.7, self._speed-self._behavior.speed_decrease*2, 4)
+            target_speed = max( min(ttc,1) * self._speed, 4)
             print("ttc: ", ttc, "target_speed: ", target_speed)
-            # input()
+            input()
             # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step()
@@ -843,7 +851,7 @@ class BehaviorAgent(BasicAgent):
             if valore[0]:
                 valori.append(valore[1])
         ordered_objs,dists = self.order_by_dist(valori, waypoint, 45, True)
-        if len(ordered_objs) > 0:
+        if len(ordered_objs) > 0 and dists[0][1]<15:
             # print(ordered_objs[0])
             # print('dists[0][1]',dists[0][1])
             # print("state 1")
