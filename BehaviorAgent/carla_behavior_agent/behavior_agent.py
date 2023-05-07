@@ -291,7 +291,7 @@ class BehaviorAgent(BasicAgent):
         elif self._direction == RoadOption.CHANGELANERIGHT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, 80, up_angle_th=60)
         return static_obj_state, static_obj, distance
 
     def static_obstacle_avoid_manager(self, waypoint,distForNormalBehavior=80):
@@ -448,7 +448,6 @@ class BehaviorAgent(BasicAgent):
             # Distance is computed from the center of the two cars,
             # we use bounding boxes to calculate the actual distance
             print("WALKER STATE la distanza dal pedone è: ", obstacle_dict["walker"][2])
-            target_speed = self._speed
             # input()
             delta_v =  self._speed - get_speed(obstacle_dict["walker"][1])
             if delta_v < 0:
@@ -481,7 +480,7 @@ class BehaviorAgent(BasicAgent):
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
         
-        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction:
+        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction and not self._surpassing_obj:
             if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
                 return self._local_planner.run_step(debug=debug)
 
@@ -500,9 +499,9 @@ class BehaviorAgent(BasicAgent):
                 #if self._surpassing_obj:
                 # input()
                 # Emergency brake if the car is very close.
-                if obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v * 0.2:
+                if obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v * 0.5:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3.5)
-                else:
+                elif obstacle_dict["biker"][2] < self._behavior.braking_distance + delta_v:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
         # 2.2: Car following behaviors
         
@@ -511,11 +510,12 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["vehicle"][0]:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction:
+            bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and obstacle_dict["vehicle"][1].type_id not in bikers_list:
                 #print('Vehicle State:')
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
-                print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+                print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction, "obstacle_dict[vehicle][1].type_id: ", obstacle_dict["vehicle"][1].type_id)
                 # print("inoltre le sue luci sono ", obstacle_dict["vehicle"][1].get_light_state())
                 #if self._surpassing_obj:
                 # input()
@@ -523,11 +523,11 @@ class BehaviorAgent(BasicAgent):
                 if delta_v < 0:
                     delta_v = 0
                 # Emergency brake if the car is very close.
-                if (obstacle_dict["vehicle"][2] < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.7) or (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5):
+                if obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v * 0.5:
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
                     # #input()
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
-                else:
+                elif obstacle_dict["vehicle"][2] < self._behavior.braking_distance + delta_v:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
@@ -554,8 +554,8 @@ class BehaviorAgent(BasicAgent):
                     if delta_v < 0:
                         delta_v = 0
                     # Emergency brake if the car is very close.
-                    if obs_distance < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.7:
-                        return self.controlled_stop(static_obj, obs_distance)
+                    if obs_distance < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.6:
+                        return self.controlled_stop(static_obj, obs_distance, 4)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
             self._local_planner.set_speed(20)
@@ -605,7 +605,7 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
 
-    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=5):
+    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=3.5):
         vehicle_speed = 0.0
         if vehicle != None:
             vehicle_speed = get_speed(vehicle)
@@ -787,7 +787,7 @@ class BehaviorAgent(BasicAgent):
                 self.surpass_vehicle = obj_to_s
                 # print('sto superando')
                 self._direction = last_dir
-                # input()
+                input()
                 return True
             else:
                 self._surpassing_obj = False
