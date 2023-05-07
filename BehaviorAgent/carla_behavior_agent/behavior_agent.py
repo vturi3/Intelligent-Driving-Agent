@@ -18,7 +18,7 @@ from behavior_types import Cautious, Aggressive, Normal
 import operator
 from local_planner import MyWaypoint
 import math
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, LineString,Point
 from math import pi
 from misc import get_speed, positive, is_within_distance, compute_distance,draw_bbox, draw_waypoints
 
@@ -291,7 +291,7 @@ class BehaviorAgent(BasicAgent):
         elif self._direction == RoadOption.CHANGELANERIGHT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, 80, up_angle_th=60)
         return static_obj_state, static_obj, distance
 
     def static_obstacle_avoid_manager(self, waypoint,distForNormalBehavior=80):
@@ -494,7 +494,7 @@ class BehaviorAgent(BasicAgent):
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
         
-        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction:
+        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction and not self._surpassing_obj:
             if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
                 return self._local_planner.run_step(debug=debug)
 
@@ -531,11 +531,24 @@ class BehaviorAgent(BasicAgent):
         if obstacle_dict["vehicle"][0]:
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction:
+            bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
+            vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc)
+
+            # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
+            left_waypoint_pos = vehicle_vehicle_wp.get_left_lane().transform.location
+            right_waypoint_pos = vehicle_vehicle_wp.get_right_lane().transform.location
+            # Calcolare la distanza euclidea tra i due waypoint
+            distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
+            # Calcolare la distanza tra il waypoint e la posizione del veicolo
+            distance = left_waypoint_pos.distance(vehicle_vehicle_loc)
+
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and (distance < distance_between_waypoint) and obstacle_dict["vehicle"][1].type_id not in bikers_list:
+
+
                 #print('Vehicle State:')
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
-                print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+                print("VEHICLE STATE la distanza dal veicolo è: ", obstacle_dict["vehicle"][2], "il veicolo è: ",obstacle_dict["vehicle"][1], "la sua lane è: ", vehicle_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction, "obstacle_dict[vehicle][1].type_id: ", obstacle_dict["vehicle"][1].type_id)
                 # print("inoltre le sue luci sono ", obstacle_dict["vehicle"][1].get_light_state())
                 #if self._surpassing_obj:
                 # input()
@@ -668,28 +681,28 @@ class BehaviorAgent(BasicAgent):
         return distance_to_start_stop
 
 
-    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=5):
-        vehicle_speed = 0.0
-        if vehicle != None:
-            vehicle_speed = get_speed(vehicle)
-        delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
-        ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
-        control = self.emergency_stop()
-        print("sono in controlled, distance: ", distance)
-        # input()
-        # Under safety time distance, slow down.
-        if distance <= minDistance:
-            return control
-        elif ttc > 0.0:
-            target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.7, self._speed-self._behavior.speed_decrease*2, 4)
-            print("ttc: ", ttc, "target_speed: ", target_speed)
-            # input()
-            # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
-            self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step()
+    # def controlled_stop(self, vehicle=None, distance=0.0,minDistance=5):
+    #     vehicle_speed = 0.0
+    #     if vehicle != None:
+    #         vehicle_speed = get_speed(vehicle)
+    #     delta_v = max(1, (self._speed - vehicle_speed) / 3.6)
+    #     ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
+    #     control = self.emergency_stop()
+    #     print("sono in controlled, distance: ", distance)
+    #     # input()
+    #     # Under safety time distance, slow down.
+    #     if distance <= minDistance:
+    #         return control
+    #     elif ttc > 0.0:
+    #         target_speed = max((ttc/self._behavior.safety_time) * self._speed * 0.7, self._speed-self._behavior.speed_decrease*2, 4)
+    #         print("ttc: ", ttc, "target_speed: ", target_speed)
+    #         # input()
+    #         # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
+    #         self._local_planner.set_speed(target_speed)
+    #         control = self._local_planner.run_step()
 
-        # per le derapate a True
-        return control
+    #     # per le derapate a True
+    #     return control
 
     def cond_to_start_surpass(self,ego_vehicle_wp):
             #ciò che noi superiamo sono oggetti statici e veicoli sia bici che auto
@@ -849,7 +862,7 @@ class BehaviorAgent(BasicAgent):
                 self.surpass_vehicle = obj_to_s
                 # print('sto superando')
                 self._direction = last_dir
-                # input()
+                input()
                 return True
             else:
                 self._surpassing_obj = False
