@@ -634,28 +634,23 @@ class BehaviorAgent(BasicAgent):
         # per le derapate a True
         return control
 
-    def controlled_stop(self, vehicle=None, distance=0.0,minDistance=3.5):
-        vehicle_speed = 0.0
-        if vehicle != None:
-            vehicle_speed = get_speed(vehicle)
-        delta_v = max(0.5, (self._speed - vehicle_speed) / 3.6)
-        ttc = distance / delta_v if delta_v != 0 else distance / np.nextafter(0., 1.)
-        control = self.emergency_stop()
-        print("sono in controlled, distance: ", distance)
-        # input()
-        # Under safety time distance, slow down.
-        if distance <= minDistance:
+    def controlled_stop(self,t_vehicle=None, distance = 0.0, minDistance=4):
+            my_velocity = self._vehicle.get_velocity()
+            if distance<=minDistance:
+                print("vado in emergency")
+                input()
+                control = self.emergency_stop()
+            else: 
+                norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
+                print("norm_velocity: ", norm_velocity)
+                target_speed = norm_velocity - (3.86*norm_velocity*3.6/distance)
+                #target_speed = norm_velocity - (max_sim_accel*sim_time)
+                print("sono in decelerate, la target speed che sto settando è:", target_speed, "la mia vel è: ", norm_velocity)
+                self._local_planner.set_speed(target_speed * 3.6)
+                input()
+                control = self._local_planner.run_step()
+            # per le derapate a True
             return control
-        elif ttc > 0.0:
-            target_speed = max( min(ttc,1) * self._speed, 4)
-            print("ttc: ", ttc, "target_speed: ", target_speed)
-            input()
-            # print("devo rallentare, l'obj vel è:",vehicle_speed," andrò a velocità: ", target_speed)
-            self._local_planner.set_speed(target_speed)
-            control = self._local_planner.run_step()
-
-        # per le derapate a True
-        return control
 
     def cond_to_start_surpass(self,ego_vehicle_wp):
             #ciò che noi superiamo sono oggetti statici e veicoli sia bici che auto
