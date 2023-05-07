@@ -664,12 +664,15 @@ class BehaviorAgent(BasicAgent):
 
     def decelerate(self,my_velocity, max_sim_accel, sim_time, distance):
         if distance<=3:
+            print("vado in emergency")
+            input()
             control = self.emergency_stop()
         else: 
             norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
             target_speed = norm_velocity - (max_sim_accel*sim_time)
-            print("sono in decelerate, la target speed che sto settando è:", target_speed)
-            self._local_planner.set_speed(target_speed)
+            print("sono in decelerate, la target speed che sto settando è:", target_speed, "la mia vel è: ", norm_velocity)
+            self._local_planner.set_speed(target_speed * 3.6)
+            input()
             control = self._local_planner.run_step()
         # per le derapate a True
         return control
@@ -678,6 +681,7 @@ class BehaviorAgent(BasicAgent):
         obstacle_velocity = obstacle.get_velocity() #3d vector in m/s^2
         my_relative_velocity = np.linalg.norm(np.array([ my_velocity.x - obstacle_velocity.x,my_velocity.y- obstacle_velocity.y, my_velocity.z - obstacle_velocity.z]))
         distance_to_start_stop = (pow(my_relative_velocity,2))/(2*max_real_accel) #a che distanza devo iniziare a frenare 
+        print("comp war dist, obstacle_velocity: ", obstacle_velocity, "distance to start stop: ", distance_to_start_stop)
         return distance_to_start_stop
 
 
