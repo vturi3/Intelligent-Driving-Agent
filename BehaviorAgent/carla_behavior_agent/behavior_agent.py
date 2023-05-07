@@ -726,7 +726,7 @@ class BehaviorAgent(BasicAgent):
                 if poss_coll_speed != 0: #il possibile colidente è in movimento
                     print("poss_coll_speed è diverso da zero")
                     #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
-                    collident_acceleration = np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z]))
+                    collident_acceleration = min(np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z])), 3)
                     print("colldent acceleration: ", collident_acceleration)
                     space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
                     print("space_poss_coll", space_poss_coll)
@@ -781,7 +781,7 @@ class BehaviorAgent(BasicAgent):
             enable, last_surpass = self.cond_to_start_surpass(ego_vehicle_wp)
             if enable:
                 #input()
-            #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
+                #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
                 #self._my_flag = True
