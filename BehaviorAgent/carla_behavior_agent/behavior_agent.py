@@ -650,6 +650,8 @@ class BehaviorAgent(BasicAgent):
                 norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
                 print("norm_velocity: ", norm_velocity)
                 target_speed = norm_velocity - (3.86*norm_velocity*3.6/distance)
+                if target_speed < 2:
+                    target_speed = 2
                 #target_speed = norm_velocity - (max_sim_accel*sim_time)
                 print("sono in decelerate, la target speed che sto settando è:", target_speed, "la mia vel è: ", norm_velocity)
                 self._local_planner.set_speed(target_speed * 3.6)
