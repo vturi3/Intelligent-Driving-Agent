@@ -160,9 +160,9 @@ class LocalPlanner(object):
                   "Use 'follow_speed_limits' to deactivate this")"""
         limit = self._vehicle.get_speed_limit()
         print("LIMITE DI VEL: ",limit,'noi stiamo andando a ', get_speed(self._vehicle))
-        if speed > limit:
+        if speed > limit :
             print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
-            self._target_speed = limit
+            self._target_speed = limit + limit * 0.03
         else:
             self._target_speed = speed
 

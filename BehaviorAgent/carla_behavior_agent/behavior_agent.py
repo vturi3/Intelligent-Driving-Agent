@@ -555,19 +555,28 @@ class BehaviorAgent(BasicAgent):
             static_obj = obstacle_dict["static_obj"][1]
             obs_distance = obstacle_dict["static_obj"][2]
             stop_cond = static_obj.bounding_box.extent.z >= 0.25
+
+            static_obj_loc = obstacle_dict["static_obj"][1].get_location()
+            static_obj_wp = self._map.get_waypoint(static_obj_loc) 
             
             static_bb_coords = static_obj.bounding_box.get_world_vertices(static_obj.get_transform())
             obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in static_bb_coords]
-            static_obj_type = getattr(static_obj,'object_type',None)
-            # print("altezza dell'oggetto: ", static_obj.bounding_box.extent.z)
-            # print("static object: ", static_obj, "type: ", static_obj_type, 'type_id: ' , static_obj.type_id)
-            # print('voglio stare fermo per ', static_obj, 'ma devo superare ', self._surpassing_obj)
-            # print("obj_vertexs_lane_id: ", obj_vertexs_lane_id)
-            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id:
+            
+
+            # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
+            left_waypoint_pos = static_obj_wp.get_left_lane().transform.location
+            right_waypoint_pos = static_obj_wp.get_right_lane().transform.location
+            # Calcolare la distanza euclidea tra i due waypoint
+            distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
+            # Calcolare la distanza tra il waypoint e la posizione del veicolo
+            distance = left_waypoint_pos.distance(static_obj_loc)
+
+
+            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id and (distance < distance_between_waypoint):
                 if stop_cond:
                     print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
-                    # input()
+                    input()
                     delta_v =  self._speed - get_speed(static_obj)
                     if delta_v < 0:
                         delta_v = 0
@@ -603,7 +612,7 @@ class BehaviorAgent(BasicAgent):
         print("NORMAL BEHAVIOUR")
         # input()
         if target_speed is None:
-            target_speed = self._vehicle.get_speed_limit()
+            target_speed = self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03
         if self._surpassing_obj:
             self._local_planner.set_speed(80)
         else:
