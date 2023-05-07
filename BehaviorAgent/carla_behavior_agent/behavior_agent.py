@@ -575,8 +575,8 @@ class BehaviorAgent(BasicAgent):
                     if delta_v < 0:
                         delta_v = 0
                     # Emergency brake if the car is very close.
-                    if obs_distance < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.6:
-                        return self.controlled_stop(static_obj, obs_distance, 4)
+                    if obs_distance < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v:
+                        return self.controlled_stop(static_obj, obs_distance,minDistance=7)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
             self._local_planner.set_speed(20)
