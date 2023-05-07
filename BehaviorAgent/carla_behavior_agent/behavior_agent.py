@@ -18,7 +18,7 @@ from behavior_types import Cautious, Aggressive, Normal
 import operator
 from local_planner import MyWaypoint
 import math
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, LineString,Point
 from math import pi
 from misc import get_speed, positive, is_within_distance, compute_distance,draw_bbox, draw_waypoints
 
@@ -454,7 +454,7 @@ class BehaviorAgent(BasicAgent):
                 delta_v = 0
             # Emergency brake if the car is very close.
             if obstacle_dict["walker"][2] < max(self._behavior.braking_distance, min_distance_for_em_stop +1) + delta_v * 0.7:
-                return self.controlled_stop(obstacle_dict["walker"][1], obstacle_dict["walker"][2])
+                return self.controlled_stop(obstacle_dict["walker"][1], obstacle_dict["walker"][2],minDistance=3)
         
         # police = self._world.get_actors().filter("*vehicle.dodge.charger_police*")
         # def dist(w): return w.get_location().distance(ego_vehicle_wp.transform.location)
@@ -511,7 +511,19 @@ class BehaviorAgent(BasicAgent):
             vehicle_vehicle_loc = obstacle_dict["vehicle"][1].get_location()
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
             bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and obstacle_dict["vehicle"][1].type_id not in bikers_list:
+            vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc)
+
+            # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
+            left_waypoint_pos = vehicle_vehicle_wp.get_left_lane().transform.location
+            right_waypoint_pos = vehicle_vehicle_wp.get_right_lane().transform.location
+            # Calcolare la distanza euclidea tra i due waypoint
+            distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
+            # Calcolare la distanza tra il waypoint e la posizione del veicolo
+            distance = left_waypoint_pos.distance(vehicle_vehicle_loc)
+
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and (distance < distance_between_waypoint) and obstacle_dict["vehicle"][1].type_id not in bikers_list:
+
+
                 #print('Vehicle State:')
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
