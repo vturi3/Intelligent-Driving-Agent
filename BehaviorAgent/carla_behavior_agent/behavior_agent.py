@@ -516,14 +516,17 @@ class BehaviorAgent(BasicAgent):
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc) 
             bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
             vehicle_vehicle_wp = self._map.get_waypoint(vehicle_vehicle_loc)
-
-            # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
-            left_waypoint_pos = vehicle_vehicle_wp.get_left_lane().transform.location
-            right_waypoint_pos = vehicle_vehicle_wp.get_right_lane().transform.location
-            # Calcolare la distanza euclidea tra i due waypoint
-            distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
-            # Calcolare la distanza tra il waypoint e la posizione del veicolo
-            distance = left_waypoint_pos.distance(vehicle_vehicle_loc)
+            try:
+                # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
+                left_waypoint_pos = vehicle_vehicle_wp.get_left_lane().transform.location
+                right_waypoint_pos = vehicle_vehicle_wp.get_right_lane().transform.location
+                # Calcolare la distanza euclidea tra i due waypoint
+                distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
+                # Calcolare la distanza tra il waypoint e la posizione del veicolo
+                distance = left_waypoint_pos.distance(vehicle_vehicle_loc)
+            except:
+                distance = 0
+                distance_between_waypoint = -1
 
             if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and (distance < distance_between_waypoint) and obstacle_dict["vehicle"][1].type_id not in bikers_list:
 
@@ -562,14 +565,17 @@ class BehaviorAgent(BasicAgent):
             static_bb_coords = static_obj.bounding_box.get_world_vertices(static_obj.get_transform())
             obj_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in static_bb_coords]
             
-
-            # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
-            left_waypoint_pos = static_obj_wp.get_left_lane().transform.location
-            right_waypoint_pos = static_obj_wp.get_right_lane().transform.location
-            # Calcolare la distanza euclidea tra i due waypoint
-            distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
-            # Calcolare la distanza tra il waypoint e la posizione del veicolo
-            distance = left_waypoint_pos.distance(static_obj_loc)
+            try:
+                # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
+                left_waypoint_pos = static_obj_wp.get_left_lane().transform.location
+                right_waypoint_pos = static_obj_wp.get_right_lane().transform.location
+                # Calcolare la distanza euclidea tra i due waypoint
+                distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
+                # Calcolare la distanza tra il waypoint e la posizione del veicolo
+                distance = left_waypoint_pos.distance(static_obj_loc)
+            except:
+                distance = 0
+                distance_between_waypoint = -1
 
 
             if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id and (distance < distance_between_waypoint):
