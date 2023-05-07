@@ -157,7 +157,7 @@ class BehaviorAgent(BasicAgent):
                     self.set_destination(end_waypoint.transform.location,
                                          left_wpt.transform.location)
 
-    def collision_and_car_avoid_manager(self, waypoint):
+    def collision_and_car_avoid_manager(self, waypoint, distForNormalBehavior=80):
         """
         This module is in charge of warning in case of a collision
         and managing possible tailgating chances.
@@ -180,10 +180,10 @@ class BehaviorAgent(BasicAgent):
         elif self._direction == RoadOption.CHANGELANERIGHT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=90, lane_offset=1)
         else:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
-                vehicle_list, 80, up_angle_th=60)
+                vehicle_list, distForNormalBehavior, up_angle_th=60)
             # tiene in considerazione anche
             # Check for tailgating
             if not vehicle_state and self._direction == RoadOption.LANEFOLLOW \
@@ -294,7 +294,7 @@ class BehaviorAgent(BasicAgent):
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
         return static_obj_state, static_obj, distance
 
-    def static_obstacle_avoid_manager(self, waypoint):
+    def static_obstacle_avoid_manager(self, waypoint,distForNormalBehavior=80):
         #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
         #filtrare tutt gli ostacoli statici
         static_obj_list = self._world.get_actors().filter("*static.prop*")
@@ -305,7 +305,7 @@ class BehaviorAgent(BasicAgent):
         elif self._direction == RoadOption.CHANGELANERIGHT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, 80, up_angle_th=60)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, distForNormalBehavior, up_angle_th=60)
         return static_obj_state, static_obj, distance
 
     def car_following_manager(self, vehicle, distance, debug=False):
@@ -429,8 +429,8 @@ class BehaviorAgent(BasicAgent):
             condToNotEnter, v, d = self._our_vehicle_obstacle_detected(
                             [self.surpass_vehicle], max(
                                 self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=60)
+            
         if (self._surpassing_obj) and self._before_surpass_lane_id != None and not condToNotEnter:
-            #input()
             #capire xke non entra qua dentro
             if self.end_surpassing(ego_vehicle_wp):
                 return self._local_planner.run_step(debug=debug)
@@ -761,7 +761,7 @@ class BehaviorAgent(BasicAgent):
             # # print("sorpasso a destra")
             # #input()
             self._direction = RoadOption.CHANGELANERIGHT
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
+        # com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
         
         # if dir == "right":
         # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
@@ -801,8 +801,8 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         elif self._local_planner._change_line=="right":        
             self._direction = RoadOption.CHANGELANELEFT
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp)
+        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3)
+        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3)
         self._direction = last_dir
         # if self._local_planner._change_line != "None":
             # print("non mi rientrare com_vehicle: ",com_vehicle)
