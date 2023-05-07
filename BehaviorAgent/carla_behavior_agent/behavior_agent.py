@@ -414,10 +414,10 @@ class BehaviorAgent(BasicAgent):
 
 
         #set some parameters for controlled stop:
-        max_real_accel = 7.72 #in m/s^2
+        max_real_accel = 3.86 #in m/s^2
         sim_time = 0.05 #s
         max_sim_accel = sim_time*max_real_accel
-        security_distance = 3 #significa che si fermerà 3 metri prima dell'ostacolo
+        security_distance = 4 #significa che si fermerà 3 metri prima dell'ostacolo
         my_velocity = self._vehicle.get_velocity() #3d vector in m/s^2
 
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
@@ -663,13 +663,15 @@ class BehaviorAgent(BasicAgent):
         return control
 
     def decelerate(self,my_velocity, max_sim_accel, sim_time, distance):
-        if distance<=3:
+        if distance<=4:
             print("vado in emergency")
             input()
             control = self.emergency_stop()
         else: 
             norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
-            target_speed = norm_velocity - (max_sim_accel*sim_time)
+            print("norm_velocity: ", norm_velocity)
+            target_speed = norm_velocity - (3.86*norm_velocity*3.6/distance)
+            #target_speed = norm_velocity - (max_sim_accel*sim_time)
             print("sono in decelerate, la target speed che sto settando è:", target_speed, "la mia vel è: ", norm_velocity)
             self._local_planner.set_speed(target_speed * 3.6)
             input()
@@ -682,6 +684,7 @@ class BehaviorAgent(BasicAgent):
         my_relative_velocity = np.linalg.norm(np.array([ my_velocity.x - obstacle_velocity.x,my_velocity.y- obstacle_velocity.y, my_velocity.z - obstacle_velocity.z]))
         distance_to_start_stop = (pow(my_relative_velocity,2))/(2*max_real_accel) #a che distanza devo iniziare a frenare 
         print("comp war dist, obstacle_velocity: ", obstacle_velocity, "distance to start stop: ", distance_to_start_stop)
+        input()
         return distance_to_start_stop
 
 
