@@ -326,26 +326,22 @@ class BehaviorAgent(BasicAgent):
         # Under safety time distance, slow down.
         if self._behavior.safety_time > ttc > 0.0:
             target_speed = min([
-                positive(vehicle_speed - self._behavior.speed_decrease),
-                self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+                positive(vehicle_speed - self._behavior.speed_decrease),    
+            self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
         # Actual safety distance area, try to follow the speed of the vehicle in front.
         elif 2 * self._behavior.safety_time > ttc >= self._behavior.safety_time:
             target_speed = min([
-                max(self._min_speed, vehicle_speed),
-                self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+                max(self._min_speed, vehicle_speed),    
+            self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
         # Normal behavior.
         else:
-            target_speed = min([
-                self._behavior.max_speed,
-                self._speed_limit - self._behavior.speed_lim_dist])
+            target_speed = self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
@@ -454,7 +450,7 @@ class BehaviorAgent(BasicAgent):
             # we use bounding boxes to calculate the actual distance
             print("WALKER STATE la distanza dal pedone è: ", obstacle_dict["walker"][2])
             # input()
-            delta_v =  self._speed - get_speed(obstacle_dict["walker"][1])
+            delta_v =  self._speed - 0.0
             if delta_v < 0:
                 delta_v = 0
             decina = delta_v/10
@@ -510,7 +506,7 @@ class BehaviorAgent(BasicAgent):
                 # Emergency brake if the car is very close.
                 if obstacle_dict["biker"][2] < quadrato_decina + security_distance:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3.5)
-                elif obstacle_dict["biker"][2] < 25:
+                elif obstacle_dict["biker"][2] < 7:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
         # 2.2: Car following behaviors
         
@@ -553,7 +549,7 @@ class BehaviorAgent(BasicAgent):
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
                     # #input()
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
-                elif obstacle_dict["vehicle"][2] < 30 and get_speed(obstacle_dict["vehicle"][1]) > 1:
+                elif obstacle_dict["vehicle"][2] < min(self._vehicle.get_speed_limit()/3,15) and get_speed(obstacle_dict["vehicle"][1]) > 1:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
@@ -849,8 +845,13 @@ class BehaviorAgent(BasicAgent):
         # if self._local_planner._change_line != "None":
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
+        bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
+        security_step_to_reEnter = 3
+        if com_vehicle != None:
+            if com_vehicle in bikers_list:
+                security_step_to_reEnter = 0
         if not com_vehicle_state and not com_obj_state:
-            if self.surpassing_security_step > 3:
+            if self.surpassing_security_step > security_step_to_reEnter:
                 # print('STO PER RIENTRARE IN CORSIA')
                 ##input()
                 self.surpass_vehicle = None
@@ -902,7 +903,8 @@ class BehaviorAgent(BasicAgent):
                             return True
                 if 'vehicle' in ordered_objs[0].type_id:
                 #get_ligth_state, vanno aggiunte altre condizioni, non tutte gli stati delle luci sono uguali per i vehicle
-                    if dists[0][1]<20 and ordered_objs[0].get_light_state() in [1537,1539, 49] and not self._surpassing_obj and get_speed(ordered_objs[0]) <= 3:
+                # orientamento semaforo, cosi gestisco se si trova diffronte a me o no,
+                    if dists[0][1]<20 and ordered_objs[0].get_light_state() in [1537,1539, 49] and not self._surpassing_obj and get_speed(ordered_objs[0]) <= 3 :
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             print("vehicle object surpass")
                             # input()
@@ -918,7 +920,7 @@ class BehaviorAgent(BasicAgent):
             #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
             elif len(int_list)>0:
                 print("state 2")
-                # #input()
+                #input()
                 print("len(int_list): ", len(int_list), "len(not_my_lane_list): ", len(not_my_lane_list))
                 if not_my_lane_list[0] > waypoint.lane_id:
                     print("not_my_lane_list[0]: ", not_my_lane_list[0], "waypoint.lane_id: ", waypoint.lane_id)
@@ -928,9 +930,17 @@ class BehaviorAgent(BasicAgent):
                         # input()
                         return True
                 else:
-                    if self.start_surpassing(ordered_objs[0], waypoint, "right") and dists[0][1]<7: 
+                    target_forward_vector = ordered_objs[0].get_transform().get_forward_vector()
+                    ego_forward_vector = self._vehicle.get_transform().get_forward_vector()
+                    dot_ve_wp = target_forward_vector.x * ego_forward_vector.x + target_forward_vector.y * ego_forward_vector.y + target_forward_vector.z * ego_forward_vector.z
+                    
+                    print(dot_ve_wp)
+                    # input('sono in else state 2')
+
+                    if dot_ve_wp < 0 and self.start_surpassing(ordered_objs[0], waypoint, "right") and dists[0][1]<7: 
                         # print("state 3.1")
-                        #input()
+                        print(dot_ve_wp)
+                        # input('sono dove dicevamo')
                         return True
         return False
 
