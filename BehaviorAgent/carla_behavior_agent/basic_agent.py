@@ -800,7 +800,20 @@ class BasicAgent(object):
                     dist = 0.5
                 # print(dist)
                 condToRet = (np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z])) > 0 or self._direction == RoadOption.CHANGELANELEFT or self._direction == RoadOption.CHANGELANERIGHT or ego_wpt.lane_id in tv_vertexs_lane_id)
-                if is_within and condToRet:
+                    
+                try:
+                    # Ottenere le informazioni sulla marcatura a sinistra e destra del waypoint e le loro location
+                    left_waypoint_pos = target_wpt.get_left_lane().transform.location
+                    right_waypoint_pos = target_wpt.get_right_lane().transform.location
+                    # Calcolare la distanza euclidea tra i due waypoint
+                    distance_between_waypoint = math.sqrt((left_waypoint_pos.x - right_waypoint_pos.x)**2 + (left_waypoint_pos.y - right_waypoint_pos.y)**2)
+                    # Calcolare la distanza tra il waypoint e la posizione del veicolo
+                    distance = left_waypoint_pos.distance(target_transform.location)
+                except:
+                    distance = 0
+                    distance_between_waypoint = -1
+                
+                if is_within and condToRet and distance < distance_between_waypoint:
                     # print("un veicolo possibile collisione: ", target_vehicle, "dist: ", dist)
                     return (True, target_vehicle, dist)
 
