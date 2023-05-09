@@ -721,7 +721,7 @@ class BasicAgent(object):
 
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
-            # print("veicolo: ",target_vehicle)
+            print("obj: ",target_vehicle)
             draw_bbox(self._world,target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_forward_vector = target_transform.get_forward_vector()
@@ -749,7 +749,7 @@ class BasicAgent(object):
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
                 tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
-                tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
+                tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
                 # if target_wpt.lane_id not in tv_vertexs_lane_id:
                 #     input()
                 #     tv_vertexs_lane_id = [target_wpt.lane_id for tv_vertex_lane_id in tv_vertexs_lane_id]
@@ -762,8 +762,11 @@ class BasicAgent(object):
                 # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
                 # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
                 # #print("len(on_same_lane): ",len(on_same_lane))
+                print("tv_vertexs_lane_id: ", tv_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
+                # input()
                 if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
-                    #input()
+                    print("potrei non considerarlo l'obj")
+                    # input()
                     # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
@@ -801,7 +804,8 @@ class BasicAgent(object):
                 # print(dist)
                 condToRet = (np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z])) > 0 or self._direction == RoadOption.CHANGELANELEFT or self._direction == RoadOption.CHANGELANERIGHT or ego_wpt.lane_id in tv_vertexs_lane_id)
                 if is_within and condToRet:
-                    # print("un veicolo possibile collisione: ", target_vehicle, "dist: ", dist)
+                    print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
+                    # input()
                     return (True, target_vehicle, dist)
 
         return (False, None, -1)

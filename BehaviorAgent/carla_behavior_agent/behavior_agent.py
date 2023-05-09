@@ -298,7 +298,7 @@ class BehaviorAgent(BasicAgent):
         #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
         #filtrare tutt gli ostacoli statici
         static_obj_list = self._world.get_actors().filter("*static.prop*")
-        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, 80,True)
+        static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, distForNormalBehavior,True)
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
@@ -306,6 +306,9 @@ class BehaviorAgent(BasicAgent):
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, distForNormalBehavior, up_angle_th=60)
+            if static_obj_state:
+                print("static_obj_state, static_obj, distance:",static_obj_state, static_obj, distance)
+                #input()
         return static_obj_state, static_obj, distance
 
     def car_following_manager(self, vehicle, distance, debug=False):
@@ -440,7 +443,7 @@ class BehaviorAgent(BasicAgent):
         obstacle_dict = {"walker": list(self.pedestrian_avoid_manager(ego_vehicle_wp))}
         obstacle_dict["biker"] = list(self.bikers_avoid_manager(ego_vehicle_wp))
         obstacle_dict["vehicle"] = list(self.collision_and_car_avoid_manager(ego_vehicle_wp))
-        obstacle_dict["static_obj"] = list(self.static_obstacle_avoid_manager(ego_vehicle_wp))
+        obstacle_dict["static_obj"] = list(self.static_obstacle_avoid_manager(ego_vehicle_wp, 100))
 
 
         # defiisce se eiste questo pedone, se esiste e si trova ad una distanza troppo vicina allora mi fermo!
@@ -506,7 +509,7 @@ class BehaviorAgent(BasicAgent):
                 # Emergency brake if the car is very close.
                 if obstacle_dict["biker"][2] < quadrato_decina + security_distance:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3.5)
-                elif obstacle_dict["biker"][2] < 7:
+                elif obstacle_dict["biker"][2] < 10 and get_speed(obstacle_dict["biker"][1]) > 2:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
         # 2.2: Car following behaviors
         
@@ -549,7 +552,7 @@ class BehaviorAgent(BasicAgent):
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
                     # #input()
                     return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
-                elif obstacle_dict["vehicle"][2] < min(self._vehicle.get_speed_limit()/3,15) and get_speed(obstacle_dict["vehicle"][1]) > 1:
+                elif obstacle_dict["vehicle"][2] < max(self._vehicle.get_speed_limit()/2,15) and get_speed(obstacle_dict["vehicle"][1]) > 1:
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
 
         #AGGIUNTA PER GESTIRE OSTACOLI STATICI SULLA STRADA
@@ -579,7 +582,9 @@ class BehaviorAgent(BasicAgent):
                 distance_between_waypoint = -1
 
 
-            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id and (distance < distance_between_waypoint):
+            if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id and (distance < 1.5*distance_between_waypoint):
+                print("potrei cominciare a frenare per STATIC OBJ")
+                # input()
                 if stop_cond:
                     print("static object più alto di mezzo metro, mi fermo")
                     print("STATIC OBJ la distance dall'obj è: ", obs_distance)
@@ -587,7 +592,9 @@ class BehaviorAgent(BasicAgent):
                     
                     distance_to_start_stop = self.compute_warning_distance(static_obj,max_real_accel, my_velocity)
                     if obs_distance<= distance_to_start_stop + security_distance:
-                        return self.controlled_stop(static_obj, obs_distance, 8)
+                        print("STATIC OBJ ora mi fermo tranqui boyyz")
+                        #input()
+                        return self.controlled_stop(static_obj, obs_distance, 10)
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
             self._local_planner.set_speed(20)
@@ -654,7 +661,10 @@ class BehaviorAgent(BasicAgent):
             else: 
                 norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
                 print("norm_velocity: ", norm_velocity)
-                target_speed = norm_velocity - (3.86*norm_velocity/distance) 
+                speed_to_sub = (3.86*norm_velocity/distance) 
+                if get_speed(self._vehicle)>50:
+                    speed_to_sub *= 10
+                target_speed = norm_velocity - speed_to_sub
                 if target_speed < 2:
                     target_speed = 2
                 #target_speed = norm_velocity - (max_sim_accel*sim_time)
@@ -680,7 +690,7 @@ class BehaviorAgent(BasicAgent):
             
             #devo ottenere informazioni sui veicoli da sorpassare: devono essere completamente o parzialmente nella mia lane e devono essere davanti a me:
             to_surpass = [] #conterrà tutti i veicoli che dovrò sorpassare
-            distance_to_surpass = 20 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
+            distance_to_surpass = 15 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
             for obs in obstacles:
                 #chiamo la funzione mettendomi nelle condizioni di guardare solo davanti a me
                 obstacle_state, obstacle, _ = self._our_vehicle_obstacle_detected([obs], np.inf, up_angle_th=60)
@@ -750,7 +760,7 @@ class BehaviorAgent(BasicAgent):
                 print("possibile collidente: ", possible_collident, "la sua velocità è: ", poss_coll_speed, "la sua accelerazione è: ",possible_collident.get_acceleration() ,"la sua posizione attuale è: ", possible_collident_wpt.transform.location)
                 #se il collidente è in movimento devo valutare anche lo spazio che potrà percorrere mentre io non conccludo il sorpasso
                 #altrimenti devo valutare solo la sua posizione:
-                if poss_coll_speed != 0: #il possibile colidente è in movimento
+                if poss_coll_speed >= self._vehicle.get_speed_limit()/(4*3.6): #il possibile colidente è in movimento
                     print("poss_coll_speed è diverso da zero")
                     #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
                     collident_acceleration = min(np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z])), 3)
@@ -770,22 +780,23 @@ class BehaviorAgent(BasicAgent):
                     if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
                         print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                         print("Sto per ritornare True")
-                        # input()
+                        input()
                         return True, last_surpass
                     else:
                         print("Sto per ritornare False")
-                        # input()
+                        input()
                         return False, last_surpass
                 else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                     print("il possible collident è fermo")
                     print("il to arrive si trova: ", to_arrive.transform.location)
-                    distance_to_surpass = distance_to_surpass + 30
+                    distance_to_surpass = distance_to_surpass + 45
                     print("possible_collident.get_speed_limit()*2/3: ", self._vehicle.get_speed_limit())
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
-                    # input()
+                    input()
                     return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass , last_surpass
             else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
                 print("Sto per ritornare True ma sono nell'ultimo else")
+                input()
                 return True, last_surpass
 
 
@@ -819,7 +830,7 @@ class BehaviorAgent(BasicAgent):
                 # print(self._local_planner.delta)
                 self._local_planner.dir = dir
                 if dir != "right":
-                    self._local_planner.set_speed(80) # da cambiare
+                    self._local_planner.set_speed(self._vehicle.get_speed_limit() * 2, True) # da cambiare
                 else:
                     self._local_planner.set_speed(get_speed(self._vehicle) * (2/3))
                 self.surpass_vehicle = obj_to_s

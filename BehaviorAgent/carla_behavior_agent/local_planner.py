@@ -92,7 +92,7 @@ class LocalPlanner(object):
         self._args_lateral_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
         self._args_lateral_dict_fast = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
         self._args_longitudinal_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
-        self._max_throt = 0.75
+        self._max_throt = 0.85
         self._max_brake = 0.3
         self._max_steer = 0.8
         self._offset = 0
@@ -148,7 +148,7 @@ class LocalPlanner(object):
         self.target_waypoint, self.target_road_option = (current_waypoint, RoadOption.LANEFOLLOW)
         self._waypoints_queue.append((self.target_waypoint, self.target_road_option))
 
-    def set_speed(self, speed):
+    def set_speed(self, speed, i_surpass = False):
         """
         Changes the target speed
 
@@ -160,7 +160,7 @@ class LocalPlanner(object):
                   "Use 'follow_speed_limits' to deactivate this")"""
         limit = self._vehicle.get_speed_limit()
         print("LIMITE DI VEL: ",limit,'noi stiamo andando a ', get_speed(self._vehicle))
-        if speed > limit :
+        if speed > limit and not i_surpass:
             print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
             self._target_speed = limit + limit * 0.03
         else:
