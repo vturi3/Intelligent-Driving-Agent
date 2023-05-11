@@ -748,10 +748,17 @@ class BasicAgent(object):
 
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
-                tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
-                tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
+                if "walker" in target_vehicle.type_id:
+                    print("questo è proprio un piedone")
+                    # input()
+                    tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+                    tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]
+
+                else:
+                    tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
+                    tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
                 # if target_wpt.lane_id not in tv_vertexs_lane_id:
-                #     input()
+                # input()
                 #     tv_vertexs_lane_id = [target_wpt.lane_id for tv_vertex_lane_id in tv_vertexs_lane_id]
                 
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
