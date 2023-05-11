@@ -61,6 +61,7 @@ class BehaviorAgent(BasicAgent):
         self._before_surpass_lane_id = None
         self.surpassing_security_step = 0
         self.surpass_vehicle = None
+        self.security_step_to_reEnter = None
 
         # Parameters for agent behavior
         if behavior == 'cautious':
@@ -294,16 +295,16 @@ class BehaviorAgent(BasicAgent):
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, 80, up_angle_th=60)
         return static_obj_state, static_obj, distance
 
-    def static_obstacle_avoid_manager(self, waypoint,distForNormalBehavior=80):
+    def static_obstacle_avoid_manager(self, waypoint,distForNormalBehavior=80, my_up_angle_th=90):
         #FUNZIONE AGGIUNTA PER LA DETECTION DI OSTACOLI STATICI SULLA STRADA
         #filtrare tutt gli ostacoli statici
         static_obj_list = self._world.get_actors().filter("*static.prop*")
         static_obj_list, dists = self.order_by_dist(static_obj_list, waypoint, distForNormalBehavior,True)
         #controlliamo le tre condizioni differenti:
         if self._direction == RoadOption.CHANGELANELEFT:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=my_up_angle_th, lane_offset=-1)
         elif self._direction == RoadOption.CHANGELANERIGHT:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=my_up_angle_th, lane_offset=1)
         else:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, distForNormalBehavior, up_angle_th=60)
             if static_obj_state:
@@ -330,7 +331,7 @@ class BehaviorAgent(BasicAgent):
         if self._behavior.safety_time > ttc > 0.0:
             target_speed = min([
                 positive(vehicle_speed - self._behavior.speed_decrease),    
-            self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03])
+            self._vehicle.get_speed_limit()])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
@@ -338,13 +339,13 @@ class BehaviorAgent(BasicAgent):
         elif 2 * self._behavior.safety_time > ttc >= self._behavior.safety_time:
             target_speed = min([
                 max(self._min_speed, vehicle_speed),    
-            self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03])
+            self._vehicle.get_speed_limit()])
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
         # Normal behavior.
         else:
-            target_speed = self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03
+            target_speed = self._vehicle.get_speed_limit()
             self._local_planner.set_speed(target_speed)
             control = self._local_planner.run_step(debug=debug)
 
@@ -508,7 +509,7 @@ class BehaviorAgent(BasicAgent):
                 # input()
                 # Emergency brake if the car is very close.
                 if obstacle_dict["biker"][2] < quadrato_decina + security_distance:
-                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3.5)
+                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=4)
                 elif obstacle_dict["biker"][2] < 10 and get_speed(obstacle_dict["biker"][1]) > 2:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2])
         # 2.2: Car following behaviors
@@ -547,6 +548,7 @@ class BehaviorAgent(BasicAgent):
                     delta_v = 0
                 decina = delta_v/10
                 quadrato_decina = decina ** 2
+                print("la mia self._speed è: ", self._speed, "get_speed(obstacle_dict['vehicle'][1]): ", get_speed(obstacle_dict['vehicle'][1]), "get_speed( self._vehicle): ", get_speed( self._vehicle), "quadrato_decina + security_distance: ", quadrato_decina + security_distance)
                 # Emergency brake if the car is very close.
                 if obstacle_dict["vehicle"][2] < quadrato_decina + security_distance:
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
@@ -594,10 +596,10 @@ class BehaviorAgent(BasicAgent):
                     if obs_distance<= distance_to_start_stop + security_distance:
                         print("STATIC OBJ ora mi fermo tranqui boyyz")
                         #input()
-                        return self.controlled_stop(static_obj, obs_distance, 10)
+                        return self.controlled_stop(static_obj, obs_distance, 10 + 0.1*get_speed(self._vehicle))
         # 3: Intersection behavior, consente di capire se siete in un incrocio, ma il comportamento è simile al normale, non ci sta una gestione apposita. La gestione degli incroci viene gestta in obj detection. Stesso comportamento normal behavor ma solo più lento.
         if (ego_vehicle_wp.is_junction or self._incoming_waypoint.is_junction):
-            self._local_planner.set_speed(20)
+            self._local_planner.set_speed(max(20,self._vehicle.get_speed_limit()/2))
             control = self._local_planner.run_step(debug=debug)
 
             vehicle_state, vehicle, v_distance = self.gestione_incrocio(ego_vehicle_wp)
@@ -622,9 +624,9 @@ class BehaviorAgent(BasicAgent):
         print("NORMAL BEHAVIOUR")
         # input()
         if target_speed is None:
-            target_speed = self._vehicle.get_speed_limit() + self._vehicle.get_speed_limit() * 0.03
+            target_speed = self._vehicle.get_speed_limit()
         if self._surpassing_obj:
-            self._local_planner.set_speed(80)
+            self._local_planner.set_speed(max(80,self._vehicle.get_speed_limit()))
         else:
             self._local_planner.set_speed(target_speed)
         control = self._local_planner.run_step(debug=debug)
@@ -656,20 +658,20 @@ class BehaviorAgent(BasicAgent):
             my_velocity = self._vehicle.get_velocity()
             if distance<=minDistance:
                 print("vado in emergency")
-                # input()
+                input()
                 control = self.emergency_stop()
             else: 
                 norm_velocity = np.linalg.norm(np.array([my_velocity.x ,my_velocity.y, my_velocity.z]))
                 print("norm_velocity: ", norm_velocity)
                 speed_to_sub = (3.86*norm_velocity/distance) 
                 if get_speed(self._vehicle)>50:
-                    speed_to_sub *= 10
+                    speed_to_sub *= 15
                 target_speed = norm_velocity - speed_to_sub
                 if target_speed < 2:
                     target_speed = 2
                 #target_speed = norm_velocity - (max_sim_accel*sim_time)
                 print("sono in decelerate, la target speed che sto settando è:", target_speed, "la mia vel è: ", norm_velocity)
-                # input()
+                input()
                 self._local_planner.set_speed(target_speed * 3.6)
                 # input()
                 control = self._local_planner.run_step()
@@ -790,7 +792,7 @@ class BehaviorAgent(BasicAgent):
                 else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                     print("il possible collident è fermo")
                     print("il to arrive si trova: ", to_arrive.transform.location)
-                    distance_to_surpass = distance_to_surpass + 45
+                    distance_to_surpass = min(distance_to_surpass + 45,100)
                     print("possible_collident.get_speed_limit()*2/3: ", self._vehicle.get_speed_limit())
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
                     # input()
@@ -819,6 +821,7 @@ class BehaviorAgent(BasicAgent):
         if obj_to_s:
             enable, last_surpass = self.cond_to_start_surpass(ego_vehicle_wp)
             if enable:
+                list_no_other_step = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "static.prop.trafficwarning","static.prop.warningaccident"]
                 #input()
                 #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
                 # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
@@ -828,6 +831,11 @@ class BehaviorAgent(BasicAgent):
                 #self.help_sorpassing(ego_vehicle_wp,'left')
                 self._local_planner._change_line = "shifting"
                 self._local_planner.delta = self.meters_shifting(last_surpass)
+                if last_surpass.type_id in list_no_other_step:
+                    print("ho impostato a 0 gli step prima di rientrare")
+                    self.security_step_to_reEnter = 0
+                else:
+                    self.security_step_to_reEnter = 3
                 # print(self._local_planner.delta)
                 self._local_planner.dir = dir
                 if dir != "right":
@@ -837,7 +845,7 @@ class BehaviorAgent(BasicAgent):
                 self.surpass_vehicle = obj_to_s
                 print('sto per superare')
                 self._direction = last_dir
-                input()
+                #input()
                 return True
             else:
                 self._surpassing_obj = False
@@ -852,18 +860,15 @@ class BehaviorAgent(BasicAgent):
         elif self._local_planner._change_line=="right":        
             self._direction = RoadOption.CHANGELANELEFT
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
-        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3)
+        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         self._direction = last_dir
+        if com_vehicle_state:
+            print("voglio chiudere il sorpasso, l'ostacolo ci sta ancora: ",com_vehicle)
         # if self._local_planner._change_line != "None":
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
-        bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
-        security_step_to_reEnter = 5
-        if com_vehicle != None:
-            if com_vehicle in bikers_list:
-                security_step_to_reEnter = 0
         if not com_vehicle_state and not com_obj_state:
-            if self.surpassing_security_step > security_step_to_reEnter:
+            if self.surpassing_security_step > self.security_step_to_reEnter:
                 # print('STO PER RIENTRARE IN CORSIA')
                 ##input()
                 self.surpass_vehicle = None
@@ -873,8 +878,10 @@ class BehaviorAgent(BasicAgent):
                 self._surpassing_obj = False
                 self._before_surpass_lane_id = None
                 self.surpassing_security_step = 0
+                self.security_step_to_reEnter = None
                 return True
             else:
+                #input()
                 self.surpassing_security_step += 1
                 # print("self.surpassing_security_step: ", self.surpassing_security_step)
                 # input()

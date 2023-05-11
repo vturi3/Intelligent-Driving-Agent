@@ -740,7 +740,7 @@ class BasicAgent(object):
                     pass
                 
                 if target_wpt.lane_id * ego_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                    # # print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
+                    print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
                     cond = 2*lane_offset*ego_wpt.lane_id
                 else:
                     cond =  lane_offset
@@ -777,16 +777,16 @@ class BasicAgent(object):
                     if not next_wpt:
                         continue
                     if target_wpt.lane_id * next_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                        # # print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
+                        print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
                         cond = - 2*lane_offset*next_wpt.lane_id
                     else:
                         cond =  lane_offset
                     if next_wpt.lane_id in ego_vertexs_lane_id:
-                        # # print("len(on_same_lane) == 0: ", len(on_same_lane))
+                        print("len(on_same_lane) == 0: ", len(on_same_lane))
                         if target_wpt.road_id != next_wpt.road_id or len(on_same_lane) == 0:
                             continue
                     else:
-                        # # print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
+                        print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
                         if target_wpt.road_id != next_wpt.road_id or next_wpt.lane_id  + cond not in tv_vertexs_lane_id:
                             continue
 
@@ -804,7 +804,7 @@ class BasicAgent(object):
                 # # print(dist)
                 condToRet = (np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z])) > 0 or self._direction == RoadOption.CHANGELANELEFT or self._direction == RoadOption.CHANGELANERIGHT or ego_wpt.lane_id in tv_vertexs_lane_id)
                 if is_within and condToRet:
-                    # print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
+                    print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
                     # input()
                     return (True, target_vehicle, dist)
 
