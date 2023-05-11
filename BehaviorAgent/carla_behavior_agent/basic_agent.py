@@ -721,7 +721,7 @@ class BasicAgent(object):
 
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
-            print("obj: ",target_vehicle)
+            # print("obj: ",target_vehicle)
             draw_bbox(self._world,target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_forward_vector = target_transform.get_forward_vector()
@@ -729,7 +729,7 @@ class BasicAgent(object):
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
             # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
             if not ego_wpt.is_junction or not target_wpt.is_junction:
-                # print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                # # print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
                 next_lane = ego_wpt.lane_id
                 try:
                     if self._direction == RoadOption.CHANGELANELEFT:
@@ -740,7 +740,7 @@ class BasicAgent(object):
                     pass
                 
                 if target_wpt.lane_id * ego_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                    # print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
+                    # # print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
                     cond = 2*lane_offset*ego_wpt.lane_id
                 else:
                     cond =  lane_offset
@@ -759,15 +759,15 @@ class BasicAgent(object):
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
-                # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
-                # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
-                # #print("len(on_same_lane): ",len(on_same_lane))
-                print("tv_vertexs_lane_id: ", tv_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
+                # # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
+                # # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
+                # # #print("len(on_same_lane): ",len(on_same_lane))
+                # print("tv_vertexs_lane_id: ", tv_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
                 # input()
                 if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
-                    print("potrei non considerarlo l'obj")
+                    # print("potrei non considerarlo l'obj")
                     # input()
-                    # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                    # # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
                     # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
                     if self._direction == RoadOption.RIGHT or self._direction == RoadOption.LEFT:
@@ -777,16 +777,16 @@ class BasicAgent(object):
                     if not next_wpt:
                         continue
                     if target_wpt.lane_id * next_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                        # print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
+                        # # print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
                         cond = - 2*lane_offset*next_wpt.lane_id
                     else:
                         cond =  lane_offset
                     if next_wpt.lane_id in ego_vertexs_lane_id:
-                        # print("len(on_same_lane) == 0: ", len(on_same_lane))
+                        # # print("len(on_same_lane) == 0: ", len(on_same_lane))
                         if target_wpt.road_id != next_wpt.road_id or len(on_same_lane) == 0:
                             continue
                     else:
-                        # print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
+                        # # print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
                         if target_wpt.road_id != next_wpt.road_id or next_wpt.lane_id  + cond not in tv_vertexs_lane_id:
                             continue
 
@@ -801,10 +801,10 @@ class BasicAgent(object):
                 is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
                 if dist < 0:
                     dist = 0.5
-                # print(dist)
+                # # print(dist)
                 condToRet = (np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z])) > 0 or self._direction == RoadOption.CHANGELANELEFT or self._direction == RoadOption.CHANGELANERIGHT or ego_wpt.lane_id in tv_vertexs_lane_id)
                 if is_within and condToRet:
-                    print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
+                    # print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
                     # input()
                     return (True, target_vehicle, dist)
 

@@ -157,7 +157,7 @@ class BehaviorAgent(BasicAgent):
                     self.set_destination(end_waypoint.transform.location,
                                          left_wpt.transform.location)
 
-    def collision_and_car_avoid_manager(self, waypoint, distForNormalBehavior=80):
+    def collision_and_car_avoid_manager(self, waypoint, distForNormalBehavior=80, my_up_angle_th=90):
         """
         This module is in charge of warning in case of a collision
         and managing possible tailgating chances.
@@ -176,11 +176,11 @@ class BehaviorAgent(BasicAgent):
         if self._direction == RoadOption.CHANGELANELEFT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=-1)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=my_up_angle_th, lane_offset=-1)
         elif self._direction == RoadOption.CHANGELANERIGHT:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, max(
-                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=90, lane_offset=1)
+                    self._behavior.min_proximity_threshold, self._speed_limit / 3), up_angle_th=my_up_angle_th, lane_offset=1)
         else:
             vehicle_state, vehicle, distance = self._our_vehicle_obstacle_detected(
                 vehicle_list, distForNormalBehavior, up_angle_th=60)
@@ -769,6 +769,7 @@ class BehaviorAgent(BasicAgent):
                     print("space_poss_coll", space_poss_coll)
                     #space_poss_coll = poss_coll_speed * time_to_surpass 
                     poss_coll_arrive_wpt = (possible_collident_wpt.next(space_poss_coll))[0] #waypoint a cui il possibile collidente arriverà nel tempo da me richiesto per il sorpasso
+
                     print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
                     print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
                     print("il to arrive si trova: ", to_arrive.transform.location)
@@ -780,11 +781,11 @@ class BehaviorAgent(BasicAgent):
                     if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
                         print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                         print("Sto per ritornare True")
-                        input()
+                        # input()
                         return True, last_surpass
                     else:
                         print("Sto per ritornare False")
-                        input()
+                        # input()
                         return False, last_surpass
                 else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                     print("il possible collident è fermo")
@@ -792,11 +793,11 @@ class BehaviorAgent(BasicAgent):
                     distance_to_surpass = distance_to_surpass + 45
                     print("possible_collident.get_speed_limit()*2/3: ", self._vehicle.get_speed_limit())
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
-                    input()
+                    # input()
                     return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass , last_surpass
             else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
                 print("Sto per ritornare True ma sono nell'ultimo else")
-                input()
+                # input()
                 return True, last_surpass
 
 
@@ -834,9 +835,9 @@ class BehaviorAgent(BasicAgent):
                 else:
                     self._local_planner.set_speed(get_speed(self._vehicle) * (2/3))
                 self.surpass_vehicle = obj_to_s
-                # print('sto superando')
+                print('sto per superare')
                 self._direction = last_dir
-                # input()
+                input()
                 return True
             else:
                 self._surpassing_obj = False
@@ -850,14 +851,14 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         elif self._local_planner._change_line=="right":        
             self._direction = RoadOption.CHANGELANELEFT
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3)
+        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3)
         self._direction = last_dir
         # if self._local_planner._change_line != "None":
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
-        security_step_to_reEnter = 3
+        security_step_to_reEnter = 5
         if com_vehicle != None:
             if com_vehicle in bikers_list:
                 security_step_to_reEnter = 0
@@ -958,7 +959,7 @@ class BehaviorAgent(BasicAgent):
     def meters_shifting(self, target_vehicle):
         obs_type = target_vehicle.attributes.get('object_type')
         if obs_type == "vehicle.bh.crossbike" or obs_type == "vehicle.diamondback.century" or obs_type == "vehicle.gazelle.omafiets":
-            sec_costant = 0.2
+            sec_costant = -0.1
         else:
             sec_costant = 0.9
         my_lat_extend = self._vehicle.bounding_box.extent.y
