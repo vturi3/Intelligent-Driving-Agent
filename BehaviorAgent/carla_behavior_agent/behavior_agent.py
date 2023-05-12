@@ -839,7 +839,7 @@ class BehaviorAgent(BasicAgent):
                     print("ho impostato a 0 gli step prima di rientrare")
                     self.security_step_to_reEnter = 0
                 else:
-                    self.security_step_to_reEnter = 5
+                    self.security_step_to_reEnter = 3
                 # print(self._local_planner.delta)
                 self._local_planner.dir = dir
                 if dir != "right":
@@ -866,7 +866,7 @@ class BehaviorAgent(BasicAgent):
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
         com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=15)
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
+        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         
         self._direction = last_dir
