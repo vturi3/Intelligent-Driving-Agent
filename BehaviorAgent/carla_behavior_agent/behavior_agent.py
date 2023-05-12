@@ -267,7 +267,7 @@ class BehaviorAgent(BasicAgent):
 
         return walker_state, walker, distance
 
-    def bikers_avoid_manager(self, waypoint, distForNormalBehavior=80):
+    def bikers_avoid_manager(self, waypoint, distForNormalBehavior=80, my_up_angle_th=90):
         """
         This module is in charge of warning in case of a collision
         with any pedestrian.
@@ -291,7 +291,7 @@ class BehaviorAgent(BasicAgent):
         elif self._direction == RoadOption.CHANGELANERIGHT:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=90, lane_offset=1)
         else:
-            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, distForNormalBehavior, up_angle_th=60)
+            static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(bikers_list, distForNormalBehavior, up_angle_th=my_up_angle_th)
         return static_obj_state, static_obj, distance
 
     def static_obstacle_avoid_manager(self, waypoint,distForNormalBehavior=80, my_up_angle_th=90):
@@ -863,15 +863,19 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         elif self._local_planner._change_line=="right":        
             self._direction = RoadOption.CHANGELANELEFT
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=15)
+        bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
+
+        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=15)
+        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
+        
         self._direction = last_dir
         if com_vehicle_state:
             print("voglio chiudere il sorpasso, l'ostacolo ci sta ancora: ",com_vehicle)
         # if self._local_planner._change_line != "None":
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
-        if not com_vehicle_state and not com_obj_state:
+        if (not com_vehicle_state and not com_obj_state and not com_biker_state) or com_vehicle_state and not com_biker_state and com_vehicle in bikers_list:
             if self.surpassing_security_step > self.security_step_to_reEnter:
                 # print('STO PER RIENTRARE IN CORSIA')
                 ##input()
