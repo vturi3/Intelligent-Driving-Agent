@@ -745,15 +745,27 @@ class BasicAgent(object):
                 else:
                     cond =  lane_offset
                 
+                bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+                
                 if "walker" in target_vehicle.type_id:
                     print("questo è proprio un piedone")
                     # input()
                     tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
                     tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]
 
+                elif target_vehicle.type_id in bikers_list:
+                    tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
+                    tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
+                    print(tv_vertexs_lane_id, ego_wpt.lane_id)
+                    angle = math.degrees(math.acos(ego_forward_vector.dot(target_forward_vector)))
+                    if 80<angle<100:
+                        tv_vertexs_lane_id.append(ego_wpt.lane_id)
+                    print(angle)
+                    input('bicicletta')    
+                
                 else:
                     tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
                     tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
@@ -766,12 +778,19 @@ class BasicAgent(object):
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
+
+
+                #### check for semi perpendicolarita ####
+                
+
+
+
                 # # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
                 # # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
                 # # #print("len(on_same_lane): ",len(on_same_lane))
                 # print("tv_vertexs_lane_id: ", tv_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
                 # input()
-                if target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0:
+                if (target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0) :
                     # print("potrei non considerarlo l'obj")
                     # input()
                     # # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
