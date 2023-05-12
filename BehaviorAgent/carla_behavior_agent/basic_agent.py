@@ -745,8 +745,6 @@ class BasicAgent(object):
                 else:
                     cond =  lane_offset
                 
-                bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
-
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
                 
@@ -754,18 +752,7 @@ class BasicAgent(object):
                     print("questo è proprio un piedone")
                     # input()
                     tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
-                    tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]
-
-                elif target_vehicle.type_id in bikers_list:
-                    tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
-                    tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
-                    print(tv_vertexs_lane_id, ego_wpt.lane_id)
-                    angle = math.degrees(math.acos(ego_forward_vector.dot(target_forward_vector)))
-                    if 80<angle<100:
-                        tv_vertexs_lane_id.append(ego_wpt.lane_id)
-                    print(angle)
-                    input('bicicletta')    
-                
+                    tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]   
                 else:
                     tv_bb_coords, e_x, e_y, e_z = self.get_bounding_box_corners(target_vehicle)
                     tv_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]), lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]  # l'angolo in alto a destra
@@ -774,6 +761,14 @@ class BasicAgent(object):
                 #     tv_vertexs_lane_id = [target_wpt.lane_id for tv_vertex_lane_id in tv_vertexs_lane_id]
                 
                 # Recupero le coordinate dell'angolo del bounding box del veicolo più vicino al bordo della corsia
+                try:
+                    angle = math.degrees(math.acos(ego_forward_vector.dot(target_forward_vector)))
+                except:
+                    angle = 0
+                if 80<angle<100 and target_wpt.lane_id == ego_wpt.lane_id + 1 and "static" not in target_vehicle.type_id:
+                    print("un oggetto vuole attraversasre dobbiamo stare attenti ",angle)
+                    tv_vertexs_lane_id.append(ego_wpt.lane_id)
+                print(angle)
                 ego_bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
