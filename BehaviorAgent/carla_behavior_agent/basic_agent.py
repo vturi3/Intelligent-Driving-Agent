@@ -740,7 +740,7 @@ class BasicAgent(object):
                     pass
                 
                 if target_wpt.lane_id * ego_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                    print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
+                    # print("ci sta un ceicolo nell'altra corsia: ",target_vehicle)
                     cond = 2*lane_offset*ego_wpt.lane_id
                 else:
                     cond =  lane_offset
@@ -765,10 +765,12 @@ class BasicAgent(object):
                     angle = math.degrees(math.acos(ego_forward_vector.dot(target_forward_vector)))
                 except:
                     angle = 0
-                if 80<angle<100 and target_wpt.lane_id == ego_wpt.lane_id + 1 and "static" not in target_vehicle.type_id:
+                print(angle)
+                if 80<angle<110 and target_wpt.lane_id == ego_wpt.lane_id + 1 and "static" not in target_vehicle.type_id:
                     print("un oggetto vuole attraversasre dobbiamo stare attenti ",angle)
                     tv_vertexs_lane_id.append(ego_wpt.lane_id)
-                print(angle)
+                    
+                    # input()
                 ego_bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
@@ -798,16 +800,16 @@ class BasicAgent(object):
                     if not next_wpt:
                         continue
                     if target_wpt.lane_id * next_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
-                        print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
+                        # print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
                         cond = - 2*lane_offset*next_wpt.lane_id
                     else:
                         cond =  lane_offset
                     if next_wpt.lane_id in ego_vertexs_lane_id:
-                        print("len(on_same_lane) == 0: ", len(on_same_lane))
+                        # print("len(on_same_lane) == 0: ", len(on_same_lane))
                         if target_wpt.road_id != next_wpt.road_id or len(on_same_lane) == 0:
                             continue
                     else:
-                        print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
+                        # print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
                         if target_wpt.road_id != next_wpt.road_id or next_wpt.lane_id  + cond not in tv_vertexs_lane_id:
                             continue
 

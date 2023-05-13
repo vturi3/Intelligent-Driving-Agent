@@ -306,8 +306,8 @@ class BehaviorAgent(BasicAgent):
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, max(self._behavior.min_proximity_threshold, self._speed_limit / 2), up_angle_th=my_up_angle_th, lane_offset=1)
         else:
             static_obj_state, static_obj, distance = self._our_vehicle_obstacle_detected(static_obj_list, distForNormalBehavior, up_angle_th=60)
-            if static_obj_state:
-                print("static_obj_state, static_obj, distance:",static_obj_state, static_obj, distance)
+            # if static_obj_state:
+                # print("static_obj_state, static_obj, distance:",static_obj_state, static_obj, distance)
                 #input()
         return static_obj_state, static_obj, distance
 
