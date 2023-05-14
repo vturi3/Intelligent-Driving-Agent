@@ -529,7 +529,7 @@ class BehaviorAgent(BasicAgent):
                 distance = 0
                 distance_between_waypoint = -1
 
-            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and (distance < distance_between_waypoint) and obstacle_dict["vehicle"][1].type_id not in bikers_list:
+            if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and (distance < distance_between_waypoint) and obstacle_dict["vehicle"][1].type_id not in bikers_list and self.surpass_vehicle==None:
 
 
                 #print('Vehicle State:')
@@ -783,16 +783,16 @@ class BehaviorAgent(BasicAgent):
                         first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
                         second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
                     except:
-                        input()
+                        # input()
                         return False,last_surpass
                     if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
                         print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
                         print("Sto per ritornare True")
-                        input()
+                        # input()
                         return True, last_surpass
                     else:
                         print("Sto per ritornare False")
-                        input()
+                        # input()
                         return False, last_surpass
                 else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                     print("il possible collident è fermo")
@@ -800,11 +800,11 @@ class BehaviorAgent(BasicAgent):
                     distance_to_surpass = min(distance_to_surpass + 45,100)
                     print("possible_collident.get_speed_limit()*2/3: ", self._vehicle.get_speed_limit())
                     print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
-                    input()
+                    # input()
                     return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass , last_surpass
             else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
                 print("Sto per ritornare True ma sono nell'ultimo else")
-                input()
+                # input()
                 return True, last_surpass
 
 
@@ -876,10 +876,12 @@ class BehaviorAgent(BasicAgent):
         # if self._local_planner._change_line != "None":
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
+        toAdd = 0
         if (not com_vehicle_state and not com_obj_state and not com_biker_state) or com_vehicle_state and not com_biker_state and com_vehicle in bikers_list:
-            if self.surpassing_security_step > self.security_step_to_reEnter:
+            if self._local_planner.dir == 'right': toAdd += 2
+            if self.surpassing_security_step > self.security_step_to_reEnter + toAdd:
                 print('STO PER RIENTRARE IN CORSIA')
-                input()
+                # input()
                 self.surpass_vehicle = None
                 self._local_planner._change_line = "None"
                 self._local_planner.delta = 0
@@ -891,7 +893,7 @@ class BehaviorAgent(BasicAgent):
                 return True
             else:
                 print("sto per ritornare false quindi non rientro")
-                input()
+                # input()
                 self.surpassing_security_step += 1
                 # print("self.surpassing_security_step: ", self.surpassing_security_step)
                 # input()
@@ -930,7 +932,7 @@ class BehaviorAgent(BasicAgent):
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             print("crossbike object surpass")
                             print("left1")
-                            input()
+                            # input()
                             return True
                 if 'vehicle' in ordered_objs[0].type_id:
                     print("o veicl")
@@ -941,7 +943,7 @@ class BehaviorAgent(BasicAgent):
                         if self.start_surpassing(ordered_objs[0], waypoint, "left"):
                             print("vehicle object surpass")
                             print("left2")
-                            input()
+                            # input()
                             return True
                 if ordered_objs[0].type_id in ['static.prop.trafficwarning','static.prop.warningaccident']:
                     print("o static")
@@ -952,7 +954,7 @@ class BehaviorAgent(BasicAgent):
                             # print('start surpassing obj')
                             print("static object surpass")
                             print("left3")
-                            input()
+                            # input()
                             return True
             #condizione per verificare che quest'oggetto invada parzialmente la mia lane (da superare)
             elif len(int_list)>0:
@@ -965,7 +967,7 @@ class BehaviorAgent(BasicAgent):
                         print("ordered_objs[0]: ", ordered_objs[0])
                         # print("state 3")
                         print("left4")
-                        input()
+                        # input()
                         return True
                 else:
                     target_forward_vector = ordered_objs[0].get_transform().get_forward_vector()
@@ -973,12 +975,12 @@ class BehaviorAgent(BasicAgent):
                     dot_ve_wp = target_forward_vector.x * ego_forward_vector.x + target_forward_vector.y * ego_forward_vector.y + target_forward_vector.z * ego_forward_vector.z
                     
                     print("questo è il valore del dot product: ", dot_ve_wp)
-                    input('sono in else state 2')
-
-                    if dot_ve_wp < 0 and dists[0][1]<7: 
+                    print("e i miei parametri sono ", dot_ve_wp,dists[0][1])
+                    # input('sono in else state 2')
+                    if dot_ve_wp < 0 and dists[0][1]<17: 
                         if self.start_surpassing(ordered_objs[0], waypoint, "right"):
-                            print("sono nell'if del right")
-                            input()
+                            print("sono nell'if del right" , dists[0][1])
+                            # input()
                             # print("state 3.1")
                             print(dot_ve_wp)
                             # input('sono dove dicevamo')
