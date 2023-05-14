@@ -682,149 +682,130 @@ class BehaviorAgent(BasicAgent):
             # per le derapate a True
             return control
 
-    def cond_to_start_surpass(self,ego_vehicle_wp):
-            #ciò che noi superiamo sono oggetti statici e veicoli sia bici che auto
-            obstacles = list(self._world.get_actors().filter("*vehicle*")) + list(self._world.get_actors().filter("*static.prop*"))
-            obstacles, _ = self.order_by_dist(obstacles, ego_vehicle_wp, np.inf)#ordiniamoli per distanza
-            #ottengo informazioni sul mio veicolo
-            ego_corners,ego_ext_x, ego_ext_y, ego_ext_z = self.get_bounding_box_corners(self._vehicle) #i vertici del mio veicolo e la sua dimensione
-            ego_lane_id = ego_vehicle_wp.lane_id #id della lane su cui io mi trovo
-            #da aggiornare ad iterazione successiva
-            previous_poligon = Polygon(ego_corners)#poligono associato a me
-            previous_actor = self._vehicle #setto il mio veicolo come previous
-            print("informazioni sul mio veicolo: ", self._vehicle,ego_ext_x, ego_ext_y, ego_ext_z, "la mia posizione attuale è: ", ego_vehicle_wp.transform.location)
-            
-            #devo ottenere informazioni sui veicoli da sorpassare: devono essere completamente o parzialmente nella mia lane e devono essere davanti a me:
-            to_surpass = [] #conterrà tutti i veicoli che dovrò sorpassare
-            distance_to_surpass = 15 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
-            for obs in obstacles:
-                #chiamo la funzione mettendomi nelle condizioni di guardare solo davanti a me
-                obstacle_state, obstacle, _ = self._our_vehicle_obstacle_detected([obs], np.inf, up_angle_th=60)
-                if obstacle_state: #significa che il veicolo invade e sta davanti a me
-                    obstacle_corners, obs_ext_x, obs_ext_y, obs_ext_z  = self.get_bounding_box_corners(obstacle) #ottengo le caratteristiche dell'ostacolo in questione
-                    obstacle_polygon = Polygon(obstacle_corners) #ottengo il poligono ad esso associato
-                    distance = previous_poligon.distance(obstacle_polygon) #ottengo la distanza tra veicolo precedente e successivo
-                    print("informazioni sull'ostacolo: ", obstacle, obs_ext_x, obs_ext_y, obs_ext_z)
-                    if distance < 20 or previous_actor==self._vehicle: #DA GENERALIZZARE, condizione per cui non posso ancora reinserirmi in carreggiata
-                        #distance_to_surpass +=  distance + obs_ext_x #aggiorno la distanza da sorpassare
-                        to_surpass.append(obstacle) #aggiungo questo agli ostacoli da sorpassare
-                    else: # significa che posso reinserirmi, quindi smetto di guardare gli altri veicoli perchè sono ordinati per distanza
-                        break
-                    #faccio aggiornamento per il ciclo
-                    previous_polygon = Polygon(obstacle_corners) 
-                    previous_actor = obstacle
-            print("Veicoli da sorpassare: ", to_surpass)
-            #FIN QUI C'È L'ANALISI DELLO SPAZIO DA SORPASSARE SE I VEICOLI FOSSERO FERMI
-            #per il calcolo delle velocità utilizzeremo il metodo delle velocità relative:
-            standard_acceleration = 1.95 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
-            #a 0.75 che è il massimo throttle che viene realizzato
-            last_surpass = to_surpass[-1]
-            last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
-            distance_to_surpass +=  Polygon(ego_corners).distance(Polygon(last_surpass_corners)) + 2*last_surpass_ext_x
-            last_surpass_lane_id = (self._map.get_waypoint(last_surpass.get_transform().location, lane_type=carla.LaneType.Any)).lane_id
-            print("il lane id dell'ultimo da sorpassare è: ", last_surpass_lane_id, "il mio è: ",ego_lane_id )
-            last_vehicle_velocity = get_speed(last_surpass)/3.6 #la valutiamo in metri al secondo
-            print("l'ultimo ostacolo da sorpassare è: ", last_surpass, "la sua velocità in m/s è: ",last_vehicle_velocity)
-            my_start_velocity = get_speed(self._vehicle)/3.6 #velocità attuale del mio veicolo in m/s
-            if ego_lane_id*last_surpass_lane_id > 0:
-                my_start_relative_velocity = my_start_velocity - last_vehicle_velocity #velocità attuale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
-            else:
-                my_start_relative_velocity = my_start_velocity + last_vehicle_velocity #velocità attuale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
-            print("mia velocità iniziale in assoluto: ", my_start_velocity, "mia velocità iniziale relativa: ", my_start_relative_velocity)
-            my_end_relative_velocity = math.sqrt(2*standard_acceleration*distance_to_surpass + pow(my_start_relative_velocity,2))#velocità finale del mio veicolo in m/s
-            my_end_velocity = math.sqrt(2*standard_acceleration*distance_to_surpass + pow(my_start_velocity,2))#velocità finale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
-            print("mia velocità finale in assoluto: ", my_end_velocity, "mia velocità finale relativa: ", my_end_relative_velocity)
-            time_to_surpass = (my_end_relative_velocity - my_start_relative_velocity)/standard_acceleration #tempo richiesto per completare il sorpasso
-            print("Il totale spazio da sorpassare è: ", distance_to_surpass,"il tempo richiesto è: ", time_to_surpass)
-            print("la mia velocità è: ", get_speed(self._vehicle), "la mia accelerazione è:", self._vehicle.get_acceleration())
-            #ora devo calcolare il punto reale a cui io arriverò, quindi il reale spazio che ho percorso
-            real_distance = (0.5*standard_acceleration*pow(time_to_surpass,2)) + (my_start_velocity*time_to_surpass) #reale distanza percorsa
-            to_arrive = ego_vehicle_wp.next(real_distance)[0] #waypoint a cui arriverò dopo aver superato
+    def cond_to_start_surpass(self, ego_vehicle_wp, dir):
+        #ciò che noi superiamo sono oggetti statici e veicoli sia bici che auto
+        obstacles = list(self._world.get_actors().filter("*vehicle*")) + list(self._world.get_actors().filter("*static.prop*"))
+        obstacles, _ = self.order_by_dist(obstacles, ego_vehicle_wp, np.inf)#ordiniamoli per distanza
+        print("len(obstacles): ",len(obstacles))
+        #ottengo informazioni sul mio veicolo
+        ego_corners,ego_ext_x, ego_ext_y, ego_ext_z = self.get_bounding_box_corners(self._vehicle) #i vertici del mio veicolo e la sua dimensione
+        ego_lane_id = ego_vehicle_wp.lane_id #id della lane su cui io mi trovo
+        #da aggiornare ad iterazione successiva
+        previous_poligon = Polygon(ego_corners)#poligono associato a me
+        previous_actor = self._vehicle #setto il mio veicolo come previous
+        print("informazioni sul mio veicolo: ", self._vehicle,ego_ext_x, ego_ext_y, ego_ext_z, "la mia posizione attuale è: ", ego_vehicle_wp.transform.location)
         
-            #ottengo i waypoint corrispettivi sulla lane che invaderò per il sorpasso
-            if self._direction == RoadOption.CHANGELANERIGHT:
-                offset = 1
-                corr_ego_wpt = ego_vehicle_wp.get_right_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
-                corr_to_arrive = to_arrive.get_right_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
-            elif self._direction == RoadOption.CHANGELANELEFT:
-                offset = -1
-                corr_ego_wpt = ego_vehicle_wp.get_left_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
-                corr_to_arrive = to_arrive.get_left_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
-            
-            
-            #analizzo se sull'altra corsia che sto andando ad invadere posso avere delle possibili collisioni
-            possible_collident = None #possibile ostacolo con cui colliderei nella lane che invaderò
-            #sfrutto tutta la lista di obstacles prima calcolata
-            for opp in obstacles: #analizzo quelli che sono gli oggetti che potrei trovarmi di fronte invadendo l'atra corsia
-                possible_collision, opposite, _ = self._our_vehicle_obstacle_detected([opp], np.inf, up_angle_th=90, lane_offset=offset)
-                if possible_collision: 
-                    possible_collident = opposite
-                    possible_collident_wpt = self._map.get_waypoint(opposite.get_transform().location, lane_type=carla.LaneType.Any)
-                    break # appena l'ho trovato posso fermarmi perche sono in ordine di vicinanza a me
-            if possible_collident != None: #ho trovato un possibili collidente
-                poss_coll_speed = get_speed(possible_collident)/3.6 #velocità del possibile collidente
-                print("possibile collidente: ", possible_collident, "la sua velocità è: ", poss_coll_speed, "la sua accelerazione è: ",possible_collident.get_acceleration() ,"la sua posizione attuale è: ", possible_collident_wpt.transform.location)
-                #se il collidente è in movimento devo valutare anche lo spazio che potrà percorrere mentre io non conccludo il sorpasso
-                #altrimenti devo valutare solo la sua posizione:
-                if poss_coll_speed >= self._vehicle.get_speed_limit()/(4*3.6): #il possibile colidente è in movimento
-                    print("poss_coll_speed è diverso da zero")
-                    #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
-                    collident_acceleration = min(np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z])), 3)
-                    print("colldent acceleration: ", collident_acceleration)
-                    space_poss_coll = (0.5*collident_acceleration*pow(time_to_surpass,2)) + (poss_coll_speed*time_to_surpass)#spazio percorso dal possibile collidente nel tempo che io impiego a fare il sorpasso
-                    print("space_poss_coll", space_poss_coll)
-                    #space_poss_coll = poss_coll_speed * time_to_surpass 
-                    poss_coll_arrive_wpt = (possible_collident_wpt.next(space_poss_coll))[0] #waypoint a cui il possibile collidente arriverà nel tempo da me richiesto per il sorpasso
-
-                    print("il possivile collidente percorrerà: ", space_poss_coll, "e arriverà a trovarsi: ", poss_coll_arrive_wpt.transform.location)
-                    print("distanza tra il mio corrispettivo sull'altra lane e il possibile collidente: ", corr_ego_wpt.transform.location.distance(possible_collident_wpt.transform.location))
-                    print("il to arrive si trova: ", to_arrive.transform.location)
-                    try:
-                        first_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_to_arrive.transform.location)#distanza tra il punto a cui il possiblie collidente arriverà e il punto in cui avro terminato il sorpasso
-                        second_p_dist = (poss_coll_arrive_wpt.transform.location).distance(corr_ego_wpt.transform.location)#distanza tra il punto a cui il possibile collidente arriverà e il punto in cui avro iniziato il sorpasso 
-                    except:
-                        input()
-                        return False,last_surpass
-                    if first_p_dist<second_p_dist and first_p_dist+second_p_dist>distance_to_surpass:
-                        print("first_p_dist:", first_p_dist, "second_p_dist: ", second_p_dist, "distance_to_surpass", distance_to_surpass)
-                        print("Sto per ritornare True")
-                        input()
-                        return True, last_surpass
-                    else:
-                        print("Sto per ritornare False")
-                        input()
-                        return False, last_surpass
-                else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
-                    print("il possible collident è fermo")
-                    print("il to arrive si trova: ", to_arrive.transform.location)
-                    distance_to_surpass = min(distance_to_surpass + 45,100)
-                    print("possible_collident.get_speed_limit()*2/3: ", self._vehicle.get_speed_limit())
-                    print("distanza tra me e criminale è: ", (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) , "distance to surpass: ", distance_to_surpass)
-                    input()
-                    return (corr_ego_wpt.transform.location).distance(possible_collident_wpt.transform.location) > distance_to_surpass , last_surpass
-            else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
-                print("Sto per ritornare True ma sono nell'ultimo else")
+        #devo ottenere informazioni sui veicoli da sorpassare: devono essere completamente o parzialmente nella mia lane e devono essere davanti a me:
+        to_surpass = [] #conterrà tutti i veicoli che dovrò sorpassare
+        distance_to_surpass = 10 # DA VERIFICARE sarà lo spazio totale che dovrò sorpassare, lo settiamo in partenza di 15 per considerare un certo parametro di sicurezza
+        for obs in obstacles:
+            #chiamo la funzione mettendomi nelle condizioni di guardare solo davanti a me
+            obstacle_state, obstacle, _ = self._our_vehicle_obstacle_detected([obs], np.inf, up_angle_th=60)
+            if obstacle_state: #significa che il veicolo invade e sta davanti a me
+                obstacle_corners, obs_ext_x, obs_ext_y, obs_ext_z  = self.get_bounding_box_corners(obstacle) #ottengo le caratteristiche dell'ostacolo in questione
+                obstacle_polygon = Polygon(obstacle_corners) #ottengo il poligono ad esso associato
+                distance = previous_poligon.distance(obstacle_polygon) #ottengo la distanza tra veicolo precedente e successivo
+                print("informazioni sull'ostacolo: ", obstacle, obs_ext_x, obs_ext_y, obs_ext_z)
+                input()
+                if distance < 20 or previous_actor==self._vehicle: #DA GENERALIZZARE, condizione per cui non posso ancora reinserirmi in carreggiata
+                    #distance_to_surpass +=  distance + obs_ext_x #aggiorno la distanza da sorpassare
+                    to_surpass.append(obstacle) #aggiungo questo agli ostacoli da sorpassare
+                else: # significa che posso reinserirmi, quindi smetto di guardare gli altri veicoli perchè sono ordinati per distanza
+                    break
+                #faccio aggiornamento per il ciclo
+                previous_poligon = Polygon(obstacle_corners) 
+                previous_actor = obstacle
+        print("Veicoli da sorpassare: ", to_surpass)
+        if dir == "left":
+            self._direction = RoadOption.CHANGELANELEFT
+        elif dir == "right":
+            self._direction = RoadOption.CHANGELANERIGHT
+        #FIN QUI C'È L'ANALISI DELLO SPAZIO DA SORPASSARE SE I VEICOLI FOSSERO FERMI
+        #per il calcolo delle velocità utilizzeremo il metodo delle velocità relative:
+        standard_acceleration = 2.6 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
+        #a 0.75 che è il massimo throttle che viene realizzato
+        last_surpass = to_surpass[-1]
+        last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
+        distance_to_surpass +=  Polygon(ego_corners).distance(Polygon(last_surpass_corners)) + 2*last_surpass_ext_x
+        last_surpass_lane_id = (self._map.get_waypoint(last_surpass.get_transform().location, lane_type=carla.LaneType.Any)).lane_id
+        print("il lane id dell'ultimo da sorpassare è: ", last_surpass_lane_id, "il mio è: ",ego_lane_id )
+        last_vehicle_velocity = get_speed(last_surpass)/3.6 #la valutiamo in metri al secondo
+        print("l'ultimo ostacolo da sorpassare è: ", last_surpass, "la sua velocità in m/s è: ",last_vehicle_velocity)
+        my_start_velocity = get_speed(self._vehicle)/3.6 #velocità attuale del mio veicolo in m/s
+        if ego_lane_id*last_surpass_lane_id > 0:
+            my_start_relative_velocity = my_start_velocity - last_vehicle_velocity #velocità attuale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
+        else:
+            my_start_relative_velocity = my_start_velocity + last_vehicle_velocity #velocità attuale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
+        print("mia velocità iniziale in assoluto: ", my_start_velocity, "mia velocità iniziale relativa: ", my_start_relative_velocity)
+        my_end_relative_velocity = math.sqrt(2*standard_acceleration*distance_to_surpass + pow(my_start_relative_velocity,2))#velocità finale del mio veicolo in m/s
+        my_end_velocity = math.sqrt(2*standard_acceleration*distance_to_surpass + pow(my_start_velocity,2))#velocità finale in m/s del mio veicolo in termini relativi rispetto all'ultimo veicolo da sorpassare
+        print("mia velocità finale in assoluto: ", my_end_velocity, "mia velocità finale relativa: ", my_end_relative_velocity)
+        time_to_surpass = (my_end_relative_velocity - my_start_relative_velocity)/standard_acceleration #tempo richiesto per completare il sorpasso
+        print("Il totale spazio da sorpassare è: ", distance_to_surpass,"il tempo richiesto è: ", time_to_surpass)
+        print("la mia velocità è: ", get_speed(self._vehicle), "la mia accelerazione è:", self._vehicle.get_acceleration())
+        #ora devo calcolare il punto reale a cui io arriverò, quindi il reale spazio che ho percorso
+        real_distance = (0.5*standard_acceleration*pow(time_to_surpass,2)) + (my_start_velocity*time_to_surpass) #reale distanza percorsa
+        to_arrive = ego_vehicle_wp.next(real_distance)[0] #waypoint a cui arriverò dopo aver superato
+    
+        #ottengo i waypoint corrispettivi sulla lane che invaderò per il sorpasso
+        if self._direction == RoadOption.CHANGELANERIGHT:
+            offset = 1
+            corr_ego_wpt = ego_vehicle_wp.get_right_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
+            corr_to_arrive = to_arrive.get_right_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+        elif self._direction == RoadOption.CHANGELANELEFT:
+            offset = -1
+            corr_ego_wpt = ego_vehicle_wp.get_left_lane() #waypoint corrispondente al punto da cui parto nella lane che invaderò
+            corr_to_arrive = to_arrive.get_left_lane() #waypoint corrispondente al punto a cui arriverò nella lane che invaderò
+        
+        
+        #analizzo se sull'altra corsia che sto andando ad invadere posso avere delle possibili collisioni
+        possible_collident = None #possibile ostacolo con cui colliderei nella lane che invaderò
+        #sfrutto tutta la lista di obstacles prima calcolata
+        for opp in obstacles: #analizzo quelli che sono gli oggetti che potrei trovarmi di fronte invadendo l'atra corsia
+            possible_collision, opposite, _ = self._our_vehicle_obstacle_detected([opp], np.inf, up_angle_th=90, lane_offset=offset)
+            if possible_collision: 
+                possible_collident = opposite
+                possible_collident_wpt = self._map.get_waypoint(opposite.get_transform().location, lane_type=carla.LaneType.Any)
+                break # appena l'ho trovato posso fermarmi perche sono in ordine di vicinanza a me
+        if possible_collident != None: #ho trovato un possibili collidente
+            poss_coll_speed = get_speed(possible_collident)/3.6 #velocità del possibile collidente
+            print("possibile collidente: ", possible_collident, "la sua velocità è: ", poss_coll_speed, "la sua accelerazione è: ",possible_collident.get_acceleration() ,"la sua posizione attuale è: ", possible_collident_wpt.transform.location)
+            #se il collidente è in movimento devo valutare anche lo spazio che potrà percorrere mentre io non conccludo il sorpasso
+            #altrimenti devo valutare solo la sua posizione:
+            #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
+            collident_acceleration = min(np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z])), 3)
+            print("colldent acceleration: ", collident_acceleration)
+            space_to_collide = (possible_collident_wpt.transform.location).distance(corr_to_arrive.transform.location)
+            if poss_coll_speed >= self._vehicle.get_speed_limit()/(4*3.6): #il possibile colidente è in movimento
+                print("poss_coll_speed è diverso da zero")
+                factor = 2*poss_coll_speed/collident_acceleration
+                time_to_collide =  (math.sqrt(pow(factor,2) + 8*(space_to_collide/collident_acceleration))-factor)/2
+                
+            else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
+                print("il possible collident è fermo")
+                print("il to arrive si trova: ", to_arrive.transform.location)
+                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/4)
+            print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
+            if time_to_surpass < time_to_collide:
+                print("posso superare ritorno true da cond to surpass")
                 input()
                 return True, last_surpass
+            else:
+                print("non posso superare ritorno false da cond to surpass")
+                input()
+                return False,last_surpass
+        else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
+            print("Sto per ritornare True ma sono nell'ultimo else")
+            input()
+            return True, last_surpass
 
 
 
     def start_surpassing(self, obj_to_s, ego_vehicle_wp, dir):
         self._surpassing_obj = True
         last_dir = self._direction
-        if dir == "left":
-            self._direction = RoadOption.CHANGELANELEFT
-        elif dir == "right":
-            # # print("sorpasso a destra")
-            # #input()
-            self._direction = RoadOption.CHANGELANERIGHT
-        # com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp)
-        
-        # if dir == "right":
-        # #     print("láuto che non mi fa sorpassare è: ", com_vehicle)
-            #input()
         if obj_to_s:
-            enable, last_surpass = self.cond_to_start_surpass(ego_vehicle_wp)
+            enable, last_surpass = self.cond_to_start_surpass(ego_vehicle_wp, dir)
             if enable:
                 list_no_other_step = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "static.prop.trafficwarning","static.prop.warningaccident"]
                 #input()
