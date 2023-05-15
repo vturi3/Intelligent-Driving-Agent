@@ -859,7 +859,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANELEFT
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
-        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=3)
+        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=20)
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         
@@ -870,9 +870,14 @@ class BehaviorAgent(BasicAgent):
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
         toAdd = 0
-        if (not com_vehicle_state and not com_obj_state and not com_biker_state) or (com_vehicle_state and not com_biker_state and com_vehicle in bikers_list):
+        if (not com_vehicle_state and not com_obj_state and not com_biker_state) or (com_vehicle_state and not com_biker_state and com_vehicle.type_id in bikers_list):
             if self._local_planner.dir == 'right': toAdd += 2
             if self.surpassing_security_step > self.security_step_to_reEnter + toAdd:
+                print("(com_vehicle_state and not com_biker_state and com_vehicle in bikers_list): ",(com_vehicle_state and not com_biker_state and com_vehicle in bikers_list))
+                print("com_biker_state: ", com_biker_state)
+                print("com_vehicle.type_id: ", com_vehicle.type_id)
+                print("com_vehicle_state: ", com_vehicle_state)
+                input()
                 print('STO PER RIENTRARE IN CORSIA')
                 # input()
                 self.surpass_vehicle = None
