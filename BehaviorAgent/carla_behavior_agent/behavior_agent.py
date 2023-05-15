@@ -514,10 +514,10 @@ class BehaviorAgent(BasicAgent):
                 #if self._surpassing_obj:
                 # input()
                 # Emergency brake if the car is very close.
-                if obstacle_dict["biker"][2] < quadrato_decina + security_distance:
-                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3)
+                if obstacle_dict["biker"][2] < quadrato_decina:
+                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=2)
                 elif obstacle_dict["biker"][2] < 8 and get_speed(obstacle_dict["biker"][1]) > 2:
-                    return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2], False, 3)
+                    return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2], False, 1)
         # 2.2: Car following behaviors
         
 
@@ -796,7 +796,7 @@ class BehaviorAgent(BasicAgent):
             else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                 print("il possible collident è fermo")
                 print("il to arrive si trova: ", to_arrive.transform.location)
-                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/5)
+                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/4)
             print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
             if time_to_surpass < time_to_collide:
                 print("posso superare ritorno true da cond to surpass")
@@ -859,7 +859,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANELEFT
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
-        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=10)
+        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=3)
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         
@@ -870,7 +870,7 @@ class BehaviorAgent(BasicAgent):
             # print("non mi rientrare com_vehicle: ",com_vehicle)
             #input()
         toAdd = 0
-        if (not com_vehicle_state and not com_obj_state and not com_biker_state) or com_vehicle_state and not com_biker_state and com_vehicle in bikers_list:
+        if (not com_vehicle_state and not com_obj_state and not com_biker_state) or (com_vehicle_state and not com_biker_state and com_vehicle in bikers_list):
             if self._local_planner.dir == 'right': toAdd += 2
             if self.surpassing_security_step > self.security_step_to_reEnter + toAdd:
                 print('STO PER RIENTRARE IN CORSIA')
