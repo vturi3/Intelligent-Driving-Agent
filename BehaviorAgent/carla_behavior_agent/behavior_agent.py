@@ -510,10 +510,16 @@ class BehaviorAgent(BasicAgent):
                     delta_v = 0
                 decina = delta_v/10
                 quadrato_decina = decina ** 2
-                print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction)
+
+                target_forward_vector = obstacle_dict["biker"][1].get_transform().get_forward_vector()
+                ego_forward_vector = self._vehicle.get_transform().get_forward_vector()
+                dot_ve_wp = target_forward_vector.x * ego_forward_vector.x + target_forward_vector.y * ego_forward_vector.y + target_forward_vector.z * ego_forward_vector.z
+                    
+                print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction, ' il dot prod è ', dot_ve_wp)
                 #if self._surpassing_obj:
-                # input()
                 # Emergency brake if the car is very close.
+                if dot_ve_wp < 0.1:
+                    return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3)
                 if obstacle_dict["biker"][2] < quadrato_decina:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=2)
                 elif obstacle_dict["biker"][2] < 8 and get_speed(obstacle_dict["biker"][1]) > 2:
@@ -733,7 +739,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         #FIN QUI C'È L'ANALISI DELLO SPAZIO DA SORPASSARE SE I VEICOLI FOSSERO FERMI
         #per il calcolo delle velocità utilizzeremo il metodo delle velocità relative:
-        standard_acceleration = 2.7 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
+        standard_acceleration = 2.68 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
         #a 0.75 che è il massimo throttle che viene realizzato
         last_surpass = to_surpass[-1]
         last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
@@ -800,7 +806,7 @@ class BehaviorAgent(BasicAgent):
             print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
             if time_to_surpass < time_to_collide:
                 print("posso superare ritorno true da cond to surpass")
-                input()
+                # input()
                 return True, last_surpass
             else:
                 print("non posso superare ritorno false da cond to surpass")
@@ -808,7 +814,7 @@ class BehaviorAgent(BasicAgent):
                 return False,last_surpass
         else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
             print("Sto per ritornare True ma sono nell'ultimo else")
-            input()
+            # input()
             return True, last_surpass
 
 
@@ -881,7 +887,7 @@ class BehaviorAgent(BasicAgent):
                 print("com_biker_state: ", com_biker_state)
                 print("type: ", type)
                 print("com_vehicle_state: ", com_vehicle_state)
-                input()
+                # input()
                 print('STO PER RIENTRARE IN CORSIA')
                 # input()
                 self.surpass_vehicle = None
