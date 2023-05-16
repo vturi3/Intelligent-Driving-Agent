@@ -834,7 +834,7 @@ class BehaviorAgent(BasicAgent):
                 self._before_surpass_lane_id = ego_vehicle_wp.lane_id
                 #self.help_sorpassing(ego_vehicle_wp,'left')
                 self._local_planner._change_line = "shifting"
-                self._local_planner.delta = self.meters_shifting(last_surpass)
+                self._local_planner.delta = self.meters_shifting(last_surpass, dir)
                 if last_surpass.type_id in list_no_other_step:
                     print("ho impostato a 0 gli step prima di rientrare")
                     self.security_step_to_reEnter = 0
@@ -995,12 +995,14 @@ class BehaviorAgent(BasicAgent):
                             return True
         return False
 
-    def meters_shifting(self, target_vehicle):
+    def meters_shifting(self, target_vehicle, dir):
         obs_type = target_vehicle.attributes.get('object_type')
         if obs_type == "vehicle.bh.crossbike" or obs_type == "vehicle.diamondback.century" or obs_type == "vehicle.gazelle.omafiets":
             sec_costant = -0.1
-        else:
+        elif dir != "right":
             sec_costant = 0.9
+        else:
+            sec_costant = 0.5
         my_lat_extend = self._vehicle.bounding_box.extent.y
         target_transform = target_vehicle.get_transform()
         target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
