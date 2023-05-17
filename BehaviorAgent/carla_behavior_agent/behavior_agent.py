@@ -866,8 +866,8 @@ class BehaviorAgent(BasicAgent):
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
         com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=20)
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60)
-        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
+        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60, low_angle_th=30)
+        com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=90)
         
         self._direction = last_dir
         if com_vehicle_state:
