@@ -520,10 +520,10 @@ class BehaviorAgent(BasicAgent):
                 # Emergency brake if the car is very close.
                 if dot_ve_wp < 0.1:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3)
-                if obstacle_dict["biker"][2] < quadrato_decina:
+                if obstacle_dict["biker"][2] < quadrato_decina + 1:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=2)
                 elif obstacle_dict["biker"][2] < 8 and get_speed(obstacle_dict["biker"][1]) > 2:
-                    return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2], False, 1)
+                    return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2], False, 1.5)
         # 2.2: Car following behaviors
         
 
@@ -865,7 +865,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANELEFT
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
-        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=20)
+        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         
@@ -1002,7 +1002,7 @@ class BehaviorAgent(BasicAgent):
         elif dir != "right":
             sec_costant = 0.9
         else:
-            sec_costant = 0.5
+            sec_costant = 0.2
         my_lat_extend = self._vehicle.bounding_box.extent.y
         target_transform = target_vehicle.get_transform()
         target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
