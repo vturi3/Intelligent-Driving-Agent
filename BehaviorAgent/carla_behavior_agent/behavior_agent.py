@@ -360,9 +360,9 @@ class BehaviorAgent(BasicAgent):
         #qua ho messo dieci pero va scelto il giusto valore.
         #creiamo un dizionario in modo da ordinare a seconda delle distanze in ordine crescente
         if check_not_our_vehicle:
-            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist and s.id != self._vehicle.id}
+            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist and s.id != self._vehicle.id and (("static" in s.type_id and s.bounding_box.extent.z >= 0.25) or "static" not in s.type_id)}
         else:
-            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist}
+            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist and (("static" in s.type_id and s.bounding_box.extent.z >= 0.25) or "static" not in s.type_id)}
         #otteniamo ora la lista corrispondente ordinata per valore
         ordered_dict = dict(sorted(static_obj_dict.items(),key=operator.itemgetter(1)))
         return (list(ordered_dict.keys()),list(ordered_dict.items()))
@@ -518,11 +518,12 @@ class BehaviorAgent(BasicAgent):
                 print("BIKERS STATE la distanza dal veicolo è: ", obstacle_dict["biker"][2], "la sua lane è: ", biker_vehicle_wp.lane_id, "mentre la mia è: ", ego_vehicle_wp.lane_id, "la mia road option è:",  self._direction, ' il dot prod è ', dot_ve_wp)
                 #if self._surpassing_obj:
                 # Emergency brake if the car is very close.
+                when_following = self._vehicle.get_speed_limit()/6.25
                 if dot_ve_wp < 0.1:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=3)
                 if obstacle_dict["biker"][2] < quadrato_decina + 1:
                     return self.controlled_stop(obstacle_dict["biker"][1], obstacle_dict["biker"][2],minDistance=2)
-                elif obstacle_dict["biker"][2] < 8 and get_speed(obstacle_dict["biker"][1]) > 2:
+                elif obstacle_dict["biker"][2] < when_following and get_speed(obstacle_dict["biker"][1]) > 2:
                     return self.car_following_manager(obstacle_dict["biker"][1], obstacle_dict["biker"][2], False, 1.5)
         # 2.2: Car following behaviors
         
@@ -576,7 +577,7 @@ class BehaviorAgent(BasicAgent):
             #stop_cond = static_obj_type != "static.prop.dirtdebris01" or static_obj_type != "static.prop.dirtdebris02" or static_obj_type != "static.prop.dirtdebris03" or static_obj_type is not None
             static_obj = obstacle_dict["static_obj"][1]
             obs_distance = obstacle_dict["static_obj"][2]
-            stop_cond = static_obj.bounding_box.extent.z >= 0.25
+            
 
             static_obj_loc = obstacle_dict["static_obj"][1].get_location()
             static_obj_wp = self._map.get_waypoint(static_obj_loc) 
@@ -600,16 +601,15 @@ class BehaviorAgent(BasicAgent):
             if static_obj.type_id  != 'static.prop.mesh' and not self._surpassing_obj and ego_vehicle_wp.lane_id in obj_vertexs_lane_id and (distance < 1.5*distance_between_waypoint):
                 print("potrei cominciare a frenare per STATIC OBJ")
                 # input()
-                if stop_cond:
-                    print("static object più alto di mezzo metro, mi fermo")
-                    print("STATIC OBJ la distance dall'obj è: ", obs_distance)
-                    # input()
-                    
-                    distance_to_start_stop = self.compute_warning_distance(static_obj,max_real_accel, my_velocity)
-                    if obs_distance<= distance_to_start_stop + security_distance:
-                        print("STATIC OBJ ora mi fermo tranqui boyyz")
-                        #input()
-                        return self.controlled_stop(static_obj, obs_distance, 10 + 0.1*get_speed(self._vehicle))
+                print("static object più alto di mezzo metro, mi fermo")
+                print("STATIC OBJ la distance dall'obj è: ", obs_distance)
+                # input()
+                
+                distance_to_start_stop = self.compute_warning_distance(static_obj,max_real_accel, my_velocity)
+                if obs_distance<= distance_to_start_stop + security_distance:
+                    print("STATIC OBJ ora mi fermo tranqui boyyz")
+                    #input()
+                    return self.controlled_stop(static_obj, obs_distance, 10 + 0.1*get_speed(self._vehicle))
         
         # 1: Red lights and stops behavior, individua se esiste in un certo range un semaforo nello stato rosso. Memorizza l'attesa del semaforo, allo step successivo verifico QUELLO specifico semaforo e decido.
         affected_by_stop,dist_from_stop = self.stop_sign_manager()
@@ -793,7 +793,10 @@ class BehaviorAgent(BasicAgent):
             #moto uniformemente accelerato anche per il veicolo che mi viene di faccia: 
             collident_acceleration = min(np.linalg.norm(np.array([(possible_collident.get_acceleration()).x,(possible_collident.get_acceleration()).y,(possible_collident.get_acceleration()).z])), 3)
             print("colldent acceleration: ", collident_acceleration)
-            space_to_collide = (possible_collident_wpt.transform.location).distance(corr_to_arrive.transform.location)
+            try:
+                space_to_collide = (possible_collident_wpt.transform.location).distance(corr_to_arrive.transform.location)
+            except:
+                return False,last_surpass 
             if poss_coll_speed >= self._vehicle.get_speed_limit()/(4*3.6): #il possibile colidente è in movimento
                 print("poss_coll_speed è diverso da zero")
                 factor = 2*poss_coll_speed/collident_acceleration
