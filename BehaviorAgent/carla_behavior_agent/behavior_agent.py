@@ -95,7 +95,7 @@ class BehaviorAgent(BasicAgent):
 
     def traffic_light_manager(self):
         """
-        This method is in charge of behaviors for red lights.
+        This method is in charge of behaviors for stop sign.
         Prende info su tutti gli attori e li filtra con traffic_light e valuta quali tra questi semafori influenza la guida.
         """
         actor_list = self._world.get_actors()
@@ -107,7 +107,7 @@ class BehaviorAgent(BasicAgent):
     def stop_sign_manager(self):
         """
         This method is in charge of behaviors for red lights.
-        Prende info su tutti gli attori e li filtra con traffic_light e valuta quali tra questi semafori influenza la guida.
+        Prende info su tutti gli attori e li filtra con stop e valuta quale stop influenza la guida
         """
         actor_list = self._world.get_actors()
         stop_list = actor_list.filter("*stop*")
