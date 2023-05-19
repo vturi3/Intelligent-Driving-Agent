@@ -111,7 +111,8 @@ class BehaviorAgent(BasicAgent):
         """
         actor_list = self._world.get_actors()
         stop_list = actor_list.filter("*stop*")
-        affected, _,dist_from_stop = self._affected_by_stop_sign(stop_list)
+        car_list = actor_list.filter("*vehicle*")
+        affected, _,dist_from_stop = self._affected_by_stop_sign(stop_list,car_list)
         return affected,dist_from_stop
 
     def _tailgating(self, waypoint, vehicle_list):
