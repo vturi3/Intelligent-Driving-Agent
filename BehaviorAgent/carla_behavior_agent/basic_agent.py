@@ -15,6 +15,7 @@ from shapely.validation import explain_validity
 
 import math
 
+import operator
 from local_planner import LocalPlanner, RoadOption
 from global_route_planner import GlobalRoutePlanner
 from datetime import datetime,timedelta
@@ -332,8 +333,19 @@ class BasicAgent(object):
                 return (True, traffic_light)
 
         return (False, None)
+    def order_by_dist(self, object_list, waypoint, max_dist, check_not_our_vehicle=False):
+        def dist(s): return s.get_location().distance(waypoint.transform.location)
+        #qua ho messo dieci pero va scelto il giusto valore.
+        #creiamo un dizionario in modo da ordinare a seconda delle distanze in ordine crescente
+        if check_not_our_vehicle:
+            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist and s.id != self._vehicle.id}
+        else:
+            static_obj_dict = {s:dist(s) for s in object_list if dist(s)<max_dist}
+        #otteniamo ora la lista corrispondente ordinata per valore
+        ordered_dict = dict(sorted(static_obj_dict.items(),key=operator.itemgetter(1)))
+        return (list(ordered_dict.keys()),list(ordered_dict.items()))
     
-    def _affected_by_stop_sign(self, stop_list=None, max_distance=None):
+    def _affected_by_stop_sign(self, stop_list=None,car_list=None, max_distance=None):
         """
         
         """
@@ -342,12 +354,17 @@ class BasicAgent(object):
 
         if not stop_list:
             stop_list = self._world.get_actors().filter("*stop*")
+        if not stop_list:
+            car_list = self._world.get_actors().filter("*vehicle*")
 
         if not max_distance:
             max_distance = self._base_stop_threshold*2
             print("self._base_stop_threshold: ", self._base_stop_threshold*2)
         print("max_distance: ", max_distance)
         # qua verifico se mi sono gia fermato allo step precedete.
+        
+        
+        
         if self._last_time_stop_sign:
             # qua devo verificare se posso andare avanti ritornando quindi un vuoto o eventualmente un altro !
             # print('sono fermo da ',self._last_time_stop_sign ,'e sono', self._world.get_snapshot().timestamp.elapsed_seconds)
@@ -361,6 +378,14 @@ class BasicAgent(object):
 
         ego_vehicle_location = self._vehicle.get_location()
         ego_vehicle_waypoint = self._map.get_waypoint(ego_vehicle_location)
+
+        vehicle_list, dists = self.order_by_dist(car_list, ego_vehicle_waypoint, 6, True)
+        if vehicle_list:
+            target_bb,new_transform = self.allunga_bounding_box(self._vehicle,isEgo=True)
+            ego_vertices = target_bb.get_world_vertices(new_transform)
+            ego_list = [[v.x, v.y, v.z] for v in ego_vertices]
+            ego_polygon = Polygon(ego_list) 
+
 
         for stop_sign in stop_list:
             if stop_sign.id in self._stop_map:
@@ -390,9 +415,20 @@ class BasicAgent(object):
                 continue
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [-30, 30]) and self._last_stop_signid != stop_sign.id:
+                if vehicle_list: 
+                            for target_vehicle in vehicle_list:
+                                target_vertices = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
+                                target_list = [[v.x, v.y, v.z] for v in target_vertices]
+                                target_polygon = Polygon(target_list)
+                                
+                                if ego_polygon.intersects(target_polygon):
+                                    print('Interseco con un vehicle davanti nello stop :(')
+                                    draw_bbox(self._world, target_vehicle,color=carla.Color(0,0,255,0))
+                                    return (True, stop_sign,dist_from_stop)
                 if dist_from_stop < 2.5:
                     self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
                     self._last_stop_signid = stop_sign.id
+                     
                 print("ho visto uno stop si trova a: ", stop_sign, "dista: ", dist_from_stop)
                 # input()
                 return (True, stop_sign,dist_from_stop)
@@ -619,7 +655,7 @@ class BasicAgent(object):
 
         return (False, None, -1)
 
-    def allunga_bounding_box(self,vehicle, alpha=0.09):
+    def allunga_bounding_box(self,vehicle, alpha=0.09,isEgo=False):
         """
         Allunga il bounding box del veicolo lungo l'asse X utilizzando il forward vector del veicolo.
 
@@ -647,6 +683,8 @@ class BasicAgent(object):
 
         if vehicle.type_id.split('.')[0] == 'walker':
             factor = 5
+        if isEgo:
+            factor = 2
         # calcola la quantità di spostamento lungo l'asse X
         x_offset = bbox_extent.x * factor
 
