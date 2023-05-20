@@ -548,8 +548,6 @@ class BehaviorAgent(BasicAgent):
                 distance_between_waypoint = -1
 
             if vehicle_vehicle_wp.lane_id != self._before_surpass_lane_id and not ego_vehicle_wp.is_junction and (distance < distance_between_waypoint) and obstacle_dict["vehicle"][1].type_id not in bikers_list and self.surpass_vehicle==None:
-
-
                 #print('Vehicle State:')
                 # Distance is computed from the center of the two cars,
                 # we use bounding boxes to calculate the actual distance
@@ -567,7 +565,7 @@ class BehaviorAgent(BasicAgent):
                 if obstacle_dict["vehicle"][2] < quadrato_decina + security_distance:
                     print("vehicle closed: ", obstacle_dict["vehicle"][1], "ha una speed di: ", get_speed(obstacle_dict["vehicle"][1]), " la distanza è: ", obstacle_dict["vehicle"][2], "è entrato per quello che hai aggiunto?: ", (obstacle_dict["vehicle"][2] < 40 and get_speed(obstacle_dict["vehicle"][1]) < 5))
                     # #input()
-                    return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
+                    return self.controlled_stop(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2], 5)
                 elif obstacle_dict["vehicle"][2] < max(self._vehicle.get_speed_limit(),15) and get_speed(obstacle_dict["vehicle"][1]) > 1:
                     print("sto per chiamare car followinf")
                     return self.car_following_manager(obstacle_dict["vehicle"][1], obstacle_dict["vehicle"][2])
@@ -796,6 +794,12 @@ class BehaviorAgent(BasicAgent):
             print("colldent acceleration: ", collident_acceleration)
             try:
                 space_to_collide = (possible_collident_wpt.transform.location).distance(corr_to_arrive.transform.location)
+                colide_vector = np.array([
+                    corr_to_arrive.transform.location.x - possible_collident_wpt.transform.location.x,
+                    corr_to_arrive.transform.location.y - possible_collident_wpt.transform.location.y,
+                    corr_to_arrive.transform.location.z - possible_collident_wpt.transform.location.z])
+                collident_forward_vector = possible_collident.get_transform().get_forward_vector()
+                scalar_val = np.dot(np.array([colide_vector[0],colide_vector[1], colide_vector[2]]), np.array([collident_forward_vector.x,collident_forward_vector.y,collident_forward_vector.z]))
             except:
                 return False,last_surpass 
             if poss_coll_speed >= self._vehicle.get_speed_limit()/(4*3.6): #il possibile colidente è in movimento
@@ -808,13 +812,14 @@ class BehaviorAgent(BasicAgent):
                 print("il to arrive si trova: ", to_arrive.transform.location)
                 time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/4)
             print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
-            if time_to_surpass < time_to_collide:
+            print("scalar_val: ", scalar_val)
+            if time_to_surpass < time_to_collide and scalar_val > 0:
                 print("posso superare ritorno true da cond to surpass")
-                # input()
+                input()
                 return True, last_surpass
             else:
                 print("non posso superare ritorno false da cond to surpass")
-                # input()
+                input()
                 return False,last_surpass
         else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
             print("Sto per ritornare True ma sono nell'ultimo else")
@@ -870,7 +875,7 @@ class BehaviorAgent(BasicAgent):
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
         com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
-        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=60)
+        com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=85)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         
         self._direction = last_dir
