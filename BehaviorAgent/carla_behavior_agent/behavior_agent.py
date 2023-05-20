@@ -813,13 +813,13 @@ class BehaviorAgent(BasicAgent):
                 time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/4)
             print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
             print("scalar_val: ", scalar_val)
-            if time_to_surpass < time_to_collide and scalar_val > 0:
+            if time_to_surpass < time_to_collide and (scalar_val > 0 or dir == "right"):
                 print("posso superare ritorno true da cond to surpass")
-                input()
+                # input()
                 return True, last_surpass
             else:
                 print("non posso superare ritorno false da cond to surpass")
-                input()
+                # input()
                 return False,last_surpass
         else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
             print("Sto per ritornare True ma sono nell'ultimo else")
@@ -874,7 +874,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANELEFT
         bikers_list = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]
 
-        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
+        com_biker_state, com_biker, com_biker_distance = self.bikers_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=75)
         com_vehicle_state, com_vehicle, com_vehicle_distance = self.collision_and_car_avoid_manager(ego_vehicle_wp,distForNormalBehavior=self._speed_limit/3,my_up_angle_th=85)
         com_obj_state, com_obj, com_obj_distance = self.static_obstacle_avoid_manager(ego_vehicle_wp, distForNormalBehavior=self._speed_limit/3,my_up_angle_th=30)
         
@@ -1005,13 +1005,20 @@ class BehaviorAgent(BasicAgent):
         return False
 
     def meters_shifting(self, target_vehicle, dir):
-        obs_type = target_vehicle.attributes.get('object_type')
-        if obs_type == "vehicle.bh.crossbike" or obs_type == "vehicle.diamondback.century" or obs_type == "vehicle.gazelle.omafiets":
-            sec_costant = -0.1
+        obs_type = target_vehicle.type_id
+        print("target_vehicle: ", target_vehicle, "obs_type: ", obs_type)
+        if obs_type in ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]:
+            sec_costant = 0.4
+            print("sec_costant: ", sec_costant, "obs_type: ", obs_type)
+            # input()
         elif dir != "right":
-            sec_costant = 0.9
+            sec_costant = 1.2
+            print("sec_costant: ", sec_costant)
+            # input()
         else:
             sec_costant = 0.2
+            print("sec_costant: ", sec_costant)
+            # input()
         my_lat_extend = self._vehicle.bounding_box.extent.y
         target_transform = target_vehicle.get_transform()
         target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
