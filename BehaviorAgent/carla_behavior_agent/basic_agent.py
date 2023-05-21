@@ -331,7 +331,7 @@ class BasicAgent(object):
                 continue
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
-                input()
+                #input()
                 self._last_traffic_light = traffic_light
                 return (True, traffic_light)
 
@@ -970,7 +970,7 @@ class BasicAgent(object):
                     print(angle, target_vehicle)
 
                     if target_vehicle.get_transform().location.distance(wp.transform.location) > ego_location.distance(wp.transform.location):
-                        if angle < 60:
+                        if angle < 55:
                             print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
                             return (False, None, -1)
 

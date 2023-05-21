@@ -1087,7 +1087,7 @@ class BehaviorAgent(BasicAgent):
             # input()
             return abs(my_lat_extend - dot_product) + sec_costant
         
-
+#restituisce il vettore proiezione di A su B e il modulo di questa
     def proj(self, A, B):
         cos_theta = np.dot(A, B) / np.linalg.norm(B)
         return (cos_theta * (B / np.linalg.norm(B)), cos_theta)
