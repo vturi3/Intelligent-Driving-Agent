@@ -390,7 +390,7 @@ class BehaviorAgent(BasicAgent):
         bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
         ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id for bb_coord in bb_coords]
         
-        if False:
+        if True:
             print(ego_vehicle_loc)
             # input()
         

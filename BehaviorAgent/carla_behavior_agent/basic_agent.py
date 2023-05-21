@@ -295,7 +295,9 @@ class BasicAgent(object):
             max_distance = self._base_tlight_threshold
         # qua verifico se mi sono gia fermato allo step precedete.
         if self._last_traffic_light:
-            if self._last_traffic_light.state != carla.TrafficLightState.Red:
+            print("self._last_traffic_light: ", self._last_traffic_light, "self._last_traffic_light.state: ", self._last_traffic_light.state)
+            
+            if self._last_traffic_light.state != carla.TrafficLightState.Red and self._last_traffic_light.state != carla.TrafficLightState.Yellow:
                 self._last_traffic_light = None
             else:
                 return (True, self._last_traffic_light)
@@ -325,10 +327,11 @@ class BasicAgent(object):
             if dot_ve_wp < 0:
                 continue
 
-            if traffic_light.state != carla.TrafficLightState.Red:
+            if traffic_light.state != carla.TrafficLightState.Red and traffic_light.state != carla.TrafficLightState.Yellow:
                 continue
 
             if is_within_distance(trigger_wp.transform, self._vehicle.get_transform(), max_distance, [0, 90]):
+                input()
                 self._last_traffic_light = traffic_light
                 return (True, traffic_light)
 
