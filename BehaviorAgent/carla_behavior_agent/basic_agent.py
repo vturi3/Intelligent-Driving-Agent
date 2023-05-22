@@ -426,7 +426,7 @@ class BasicAgent(object):
                                 
                                 if ego_polygon.intersects(target_polygon):
                                     print('Interseco con un vehicle davanti nello stop :(')
-                                    draw_bbox(self._world, target_vehicle,color=carla.Color(0,0,255,0))
+                                    # draw_bbox(self._world, target_vehicle,color=carla.Color(0,0,255,0))
                                     return (True, stop_sign,dist_from_stop)
                 if dist_from_stop < 2.5:
                     self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
@@ -716,7 +716,7 @@ class BasicAgent(object):
 
         new_transform = carla.Transform(new_location, vehicle_transform.rotation) 
 
-        draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0),location=new_location)
+        # draw_bbox(self._world, vehicle,new_bbox_extent,color=carla.Color(0,255,0,0),location=new_location)
 
         return carla.BoundingBox(bbox.location, new_bbox_extent),new_transform
 
@@ -763,7 +763,7 @@ class BasicAgent(object):
         for target_vehicle in vehicle_list:
             # per ogni vehicle della lista
             # print("obj: ",target_vehicle)
-            draw_bbox(self._world,target_vehicle)
+            # draw_bbox(self._world,target_vehicle)
             target_transform = target_vehicle.get_transform()
             target_forward_vector = target_transform.get_forward_vector()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
@@ -807,6 +807,7 @@ class BasicAgent(object):
                 except:
                     angle = 0
                 print(angle)
+                # In alcuni casi gli oggetti intenzionati ad attraversare non venivano rilevati sulla nostra lane, in questo caso forziamo il considerare di tale oggetto aggiungendo alla lista dei vertici quello della nostra lane. (casi biciclette o pedoni che attraversano)
                 if 80<angle<110 and target_wpt.lane_id == ego_wpt.lane_id + 1 and "static" not in target_vehicle.type_id:
                     print("un oggetto vuole attraversasre dobbiamo stare attenti ",angle)
                     tv_vertexs_lane_id.append(ego_wpt.lane_id)
@@ -815,42 +816,44 @@ class BasicAgent(object):
                 ego_bb_coords = self._vehicle.bounding_box.get_world_vertices(self._vehicle.get_transform())
                 ego_vertexs_lane_id = [(self._map.get_waypoint(bb_coord)).lane_id + cond for bb_coord in ego_bb_coords]
 
+                # con questa lista verifichiamo quanti lane id sono uguali tra le due liste, in generale se un oggetto si trova sulla nostra lane questa lista ha una len >= 1
                 on_same_lane = list(set(tv_vertexs_lane_id) & set(ego_vertexs_lane_id)) 
 
-
                 #### check for semi perpendicolarita ####
-                
-
-
 
                 # # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
                 # # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
                 # # #print("len(on_same_lane): ",len(on_same_lane))
                 # print("tv_vertexs_lane_id: ", tv_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
                 # input()
+                # se entro qui l'obj non si trova sulla mia lane (ancora)
                 if (target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0) :
                     # print("potrei non considerarlo l'obj")
                     # input()
                     # # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
-                    # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
+                    # Recuperiamo dalla coda dei waypoint nel local Planner i waypoint successivi in base alla direzione che abbiamo.
                     if self._direction == RoadOption.RIGHT or self._direction == RoadOption.LEFT:
                         next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=20)[0]
                     else:
                         next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
                     if not next_wpt:
                         continue
+                    # se questa condizione è verificata, ho un veicolo nella direzione opposta.
                     if target_wpt.lane_id * next_wpt.lane_id < 0 and self._direction != RoadOption.LANEFOLLOW and target_wpt.lane_id == next_lane:
                         # print("ci sta un ceicolo nell'altra corsia prossimamnte: ",target_vehicle)
                         cond = - 2*lane_offset*next_wpt.lane_id
                     else:
                         cond =  lane_offset
+                    # qua verifico se nel futuro vado nella lane dove si trova almeno un vertice del bbox del veicolo che sto considerando
                     if next_wpt.lane_id in ego_vertexs_lane_id:
                         # print("len(on_same_lane) == 0: ", len(on_same_lane))
+                        # In questo modo verifico se nel futuro mi trovo su lane diverse, se è cosi non considero l'obj
                         if target_wpt.road_id != next_wpt.road_id or len(on_same_lane) == 0:
                             continue
                     else:
                         # print("next_wpt.lane_id  + cond: ", next_wpt.lane_id  + cond, "tv_vertexs_lane_id: ", tv_vertexs_lane_id)
+                        # Verifico che nella lane futura non mi trovo nella sua lane
                         if target_wpt.road_id != next_wpt.road_id or next_wpt.lane_id  + cond not in tv_vertexs_lane_id:
                             continue
 
@@ -858,8 +861,8 @@ class BasicAgent(object):
 
                 target_rear_transform = target_transform
                 target_rear_extent = np.sqrt(np.square(target_vehicle.bounding_box.extent.y/2) + np.square(target_vehicle.bounding_box.extent.x/2))
-                # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo cago.
-                
+                # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo considero.
+
                 if self._surpassing_obj and self._direction != RoadOption.LANEFOLLOW:
                     max_distance = inf
                 is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
@@ -925,7 +928,7 @@ class BasicAgent(object):
         for wp, _ in self._local_planner.get_plan():
             if ego_location.distance(wp.transform.location) > max_distance or i > 3:
                 break
-            draw_waypoints(self._world,[wp])
+            # draw_waypoints(self._world,[wp])
             i+=1
 
             r_vec = wp.transform.get_right_vector()
