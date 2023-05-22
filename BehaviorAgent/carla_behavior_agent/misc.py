@@ -29,7 +29,21 @@ def draw_waypoints(world, waypoints, z=0.5,life_time=0.1):
 
 def draw_bbox(world, vehicle,vehicleVector=None,location=None,color=carla.Color(255,0,0,0),duration=0.1,rotation=None):
     """
-     da scrivere ora nn ho tempo
+     Function to draw a bounding box around a vehicle in the simulation world.
+
+    :param world: carla.World object representing the simulation world.
+    :param vehicle: carla.Vehicle object for which the bounding box is drawn.
+    :param vehicleVector: carla.Vector3D object representing the extent of the bounding box.
+        If None, the extent of the vehicle's bounding box is used.
+    :param location: carla.Location object representing the location of the bounding box.
+        If None, the location of the vehicle's transform is used.
+    :param color: carla.Color object representing the color of the bounding box.
+        Default is red color.
+    :param duration: Duration in seconds for which the bounding box is displayed.
+        Default is 0.1 seconds.
+    :param rotation: carla.Rotation object representing the rotation of the bounding box.
+        If None, the rotation of the vehicle's transform is used.
+
     """
     if not vehicleVector:
         vehicleVector = vehicle.bounding_box.extent
