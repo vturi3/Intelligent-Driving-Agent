@@ -931,7 +931,7 @@ class BehaviorAgent(BasicAgent):
             obj_vertexs_lane_id = [(self._map.get_waypoint(carla.Location(bb_coord[0], bb_coord[1], bb_coord[2]))).lane_id for bb_coord in obj_bb_coords]
             int_list = list(set(obj_vertexs_lane_id) & set(ego_vertexs_lane_id))
             print("obj_vertexs_lane_id: ", obj_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
-            draw_bbox(self._world, ordered_objs[0])
+            # draw_bbox(self._world, ordered_objs[0])
             not_my_lane_list = list(set(obj_vertexs_lane_id) - set(int_list))
             print("int_list: ", int_list, "not_my_lane_list: ", not_my_lane_list)
             # input()
@@ -1022,7 +1022,7 @@ class BehaviorAgent(BasicAgent):
         my_lat_extend = self._vehicle.bounding_box.extent.y
         target_transform = target_vehicle.get_transform()
         target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
-        draw_waypoints(self._vehicle.get_world(), [target_wpt], 1.0)
+        # draw_waypoints(self._vehicle.get_world(), [target_wpt], 1.0)
         if str(target_wpt.lane_type) != 'Driving':
 
             # input("va tutto malissomo")
@@ -1046,7 +1046,7 @@ class BehaviorAgent(BasicAgent):
         #target_bb = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
         # print("target_bb[0]:", target_bb[0])
         distances = {} 
-        draw_bbox(self._world, target_vehicle)
+        # draw_bbox(self._world, target_vehicle)
         for vertex in target_bb:
             #loc= carla.Location(vertex.x,vertex.y,vertex.z)
             #carla.DebugHelper.draw_point(loc,0.5)
