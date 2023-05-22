@@ -88,7 +88,7 @@ class VehicleController():
         return control
 
 
-    def run_step(self, target_speed, waypoint):
+    def run_step(self, target_speed):
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint
@@ -100,7 +100,7 @@ class VehicleController():
         """
 
         acceleration = self._lon_controller.run_step(target_speed)
-        current_steering = self._lat_controller.run_step(waypoint)
+        current_steering = self._lat_controller.run_step()
         control = carla.VehicleControl()
         if acceleration >= 0.0:
             control.throttle = min(acceleration, self.max_throt)
@@ -344,7 +344,7 @@ class StanleyLateralController():
     
     def ourSetNextWaypoint(self, wp):
         """Sets trajectory to follow and filters spurious points"""
-        self._wps[0] = wp 
+        self._wps[0] = [wp]
         
         
 class PIDLateralController():
