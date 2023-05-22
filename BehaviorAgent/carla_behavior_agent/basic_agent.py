@@ -970,7 +970,7 @@ class BasicAgent(object):
                     print(angle, target_vehicle)
 
                     if target_vehicle.get_transform().location.distance(wp.transform.location) > ego_location.distance(wp.transform.location):
-                        if angle < 55:
+                        if angle < 57:
                             print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
                             return (False, None, -1)
 
