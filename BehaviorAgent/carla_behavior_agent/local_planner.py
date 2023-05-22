@@ -273,12 +273,12 @@ class LocalPlanner(object):
             for _ in range(num_waypoint_removed):
                 self._waypoints_queue.popleft()
 
-        if changed == False and vehicle_speed > 45:
-            self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
-            changed = True
-        if changed and vehicle_speed <= 45:
-            self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
-            changed = False
+        # if changed == False and vehicle_speed > 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
+        #     changed = True
+        # if changed and vehicle_speed <= 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
+        #     changed = False
 
         # Get the target waypoint and move using the PID controllers. Stop if no target waypoint
         if len(self._waypoints_queue) == 0:
@@ -292,9 +292,11 @@ class LocalPlanner(object):
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
                     
             if self._change_line == 'left':
-                control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_left_lane())
+                self._vehicle_controller.ourSetNextWaypoint(self.target_waypoint.get_left_lane())
+                control = self._vehicle_controller.run_step(self._target_speed)
             elif self._change_line == 'right':
-                control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint.get_right_lane())
+                self._vehicle_controller.ourSetNextWaypoint(self.target_waypoint.get_right_lane())
+                control = self._vehicle_controller.run_step(self._target_speed)
             elif self._change_line == 'shifting':
                 shift = 1
                 if self.dir == "right":
@@ -322,9 +324,10 @@ class LocalPlanner(object):
                     new_waypoint = MyWaypoint(new_location, waypoint.transform.rotation)
                     print("self.target_waypoint.transform.location", new_waypoint.get_transform().location)
                     print("self.target_waypoint.transform.location", new_waypoint.transform.location)
-                control = self._vehicle_controller.run_step(self._target_speed, new_waypoint)
+                    self._vehicle_controller.ourSetNextWaypoint(new_waypoint)
+                control = self._vehicle_controller.run_step(self._target_speed)
             else:
-                control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
+                control = self._vehicle_controller.run_step(self._target_speed)
 
         #if True:
            #draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
@@ -367,12 +370,12 @@ class LocalPlanner(object):
             for _ in range(num_waypoint_removed):
                 self._waypoints_queue.popleft()
 
-        if changed == False and vehicle_speed > 45:
-            self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
-            changed = True
-        if changed and vehicle_speed <= 45:
-            self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
-            changed = False
+        # if changed == False and vehicle_speed > 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
+        #     changed = True
+        # if changed and vehicle_speed <= 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
+        #     changed = False
 
         # Get the target waypoint and move using the PID controllers. Stop if no target waypoint
         if len(self._waypoints_queue) == 0:

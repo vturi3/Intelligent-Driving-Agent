@@ -50,8 +50,8 @@ class VehicleController():
         self._world = self._vehicle.get_world()
         self.past_steering = self._vehicle.get_control().steer
         self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
-        self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
-    
+        self._lat_controller = StanleyLateralController(self._vehicle, offset, **args_lateral)
+    # vehicle, offset=0, lookahead_distance=0.65, K_V=1.0, K_S=0.0, dt=0.03
     def run_step_only_lateral(self, waypoint):
         """
         Execute one step of control invoking both lateral and longitudinal
@@ -63,7 +63,7 @@ class VehicleController():
             :return: distance (in meters) to the waypoint
         """
 
-        current_steering = self._lat_controller.run_step(waypoint)
+        current_steering = self._lat_controller.run_step()
 
         control = carla.VehicleControl()
         control.throttle = 0.0
@@ -138,6 +138,9 @@ class VehicleController():
     
     def setWaypoints(self, waypoints):
         self._lat_controller.setWaypoints(waypoints)
+    
+    def ourSetNextWaypoint(self, wp):
+        self._lat_controller.ourSetNextWaypoint(wp)
 
 
 class PIDLongitudinalController():
@@ -338,6 +341,11 @@ class StanleyLateralController():
             dd = hypot(trj_heading_x, trj_heading_y)
             if dd > 0:
                 self._wps.append(wps[i])
+    
+    def ourSetNextWaypoint(self, wp):
+        """Sets trajectory to follow and filters spurious points"""
+        self._wps[0] = wp 
+        
         
 class PIDLateralController():
     """
