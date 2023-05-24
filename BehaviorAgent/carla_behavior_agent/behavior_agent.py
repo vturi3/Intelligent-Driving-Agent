@@ -738,7 +738,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         #FIN QUI C'È L'ANALISI DELLO SPAZIO DA SORPASSARE SE I VEICOLI FOSSERO FERMI
         #per il calcolo delle velocità utilizzeremo il metodo delle velocità relative:
-        standard_acceleration = 2.68 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
+        standard_acceleration = 2.61 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
         #a 0.75 che è il massimo throttle che viene realizzato
         last_surpass = to_surpass[-1]
         last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
@@ -1016,7 +1016,7 @@ class BehaviorAgent(BasicAgent):
             print("sec_costant: ", sec_costant)
             # input()
         else:
-            sec_costant = 0.35
+            sec_costant = 0.3
             print("sec_costant: ", sec_costant)
             # input()
         my_lat_extend = self._vehicle.bounding_box.extent.y

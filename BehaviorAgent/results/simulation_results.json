@@ -10,7 +10,7 @@
                 "index": 0,
                 "route_id": "RouteScenario_0_rep0",
                 "status": "Failed - Agent crashed",
-                "num_infractions": 0,
+                "num_infractions": 1,
                 "infractions": {
                     "collisions_layout": [],
                     "collisions_pedestrian": [],
@@ -18,7 +18,9 @@
                     "red_light": [],
                     "stop_infraction": [],
                     "outside_route_lanes": [],
-                    "min_speed_infractions": [],
+                    "min_speed_infractions": [
+                        "Average speed is 92.51% of the surrounding traffic's one"
+                    ],
                     "yield_emergency_vehicles_infractions": [],
                     "scenario_timeouts": [],
                     "route_dev": [],
@@ -26,14 +28,14 @@
                     "route_timeout": []
                 },
                 "scores": {
-                    "score_route": 7.42,
-                    "score_penalty": 1.0,
-                    "score_composed": 7.42
+                    "score_route": 99.74,
+                    "score_penalty": 0.97753,
+                    "score_composed": 97.498842
                 },
                 "meta": {
                     "route_length": 4210.947,
-                    "duration_game": 48.75,
-                    "duration_system": 99.271
+                    "duration_game": 496.95,
+                    "duration_system": 1019.213
                 }
             }
         ]
