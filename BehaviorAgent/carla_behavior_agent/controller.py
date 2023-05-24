@@ -9,10 +9,20 @@ from collections import deque
 import math
 import numpy as np
 import carla
-from misc import get_speed
+from misc import get_speed,draw_waypoints
 import sys
 
 from math import atan2, atan, hypot
+
+class MyWaypoint:
+    def __init__(self, location, rotation=None):
+        self.transform = carla.Transform(location, rotation)
+    
+    def set_transform(self, transform):
+        self.transform = transform
+
+    def get_transform(self):
+        return self.transform
 
 
 class VehicleController():
@@ -139,8 +149,8 @@ class VehicleController():
     def setWaypoints(self, waypoints):
         self._lat_controller.setWaypoints(waypoints)
     
-    def ourSetNextWaypoint(self, wp):
-        self._lat_controller.ourSetNextWaypoint(wp)
+    def ourSetNextWaypoint(self, change_line="None", delta=0, dir="left"):
+        self._lat_controller.ourSetNextWaypoint(change_line, delta, dir)
 
 
 class PIDLongitudinalController():
@@ -213,7 +223,7 @@ class StanleyLateralController():
     StanleyLateralController implements lateral control using a Stanley.
     """
 
-    def __init__(self, vehicle, offset=0, lookahead_distance=0.65, K_V=1.0, K_S=0.0, dt=0.03):
+    def __init__(self, vehicle, offset=0, lookahead_distance=1.5, K_V=1.0, K_S=0.0, dt=0.03):
         """
         Constructor method.
 
@@ -232,6 +242,9 @@ class StanleyLateralController():
         self._wps = None
         self._lookahead_distance = lookahead_distance
         self._offset = offset
+        self.delta = 0
+        self.dir = "left"
+        self._change_line = "None"
 
     def run_step(self):
         """
@@ -282,16 +295,23 @@ class StanleyLateralController():
         
         # Get Target Waypoint
         ce_idx = self._get_lookahead_index(ego_loc,self._lookahead_distance)
-        desired_x = self._wps[ce_idx][0].transform.location.x
-        desired_y = self._wps[ce_idx][0].transform.location.y
+
+        wp_to_follow = self.what_to_follow(ce_idx)
         
+        draw_waypoints(self._vehicle.get_world(), [self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0]], 1.0)
+        desired_x = wp_to_follow.transform.location.x
+        desired_y = wp_to_follow.transform.location.y
+        print("ce_idx: ", ce_idx)
+        print(self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0])
         # Get Target Heading
         if ce_idx < len(self._wps)-1:
-            desired_heading_x = self._wps[ce_idx+1][0].transform.location.x - self._wps[ce_idx][0].transform.location.x
-            desired_heading_y = self._wps[ce_idx+1][0].transform.location.y - self._wps[ce_idx][0].transform.location.y
+            next = self.what_to_follow(ce_idx+1)
+            desired_heading_x = next.transform.location.x - wp_to_follow.transform.location.x
+            desired_heading_y = next.transform.location.y - wp_to_follow.transform.location.y
         else:
-            desired_heading_x = self._wps[ce_idx][0].transform.location.x - self._wps[ce_idx-1][0].transform.location.x
-            desired_heading_y = self._wps[ce_idx][0].transform.location.y - self._wps[ce_idx-1][0].transform.location.y
+            previous = self.what_to_follow(ce_idx-1)
+            desired_heading_x = wp_to_follow.transform.location.x - previous.transform.location.x
+            desired_heading_y = wp_to_follow.transform.location.y - previous.transform.location.y
         
         # Trajectory Heading
         desired_heading = atan2(desired_heading_y, desired_heading_x)
@@ -342,10 +362,45 @@ class StanleyLateralController():
             if dd > 0:
                 self._wps.append(wps[i])
     
-    def ourSetNextWaypoint(self, wp):
+    def ourSetNextWaypoint(self, change_line="None", delta=0, dir="left"):
         """Sets trajectory to follow and filters spurious points"""
-        self._wps[0] = [wp]
-        
+        self._change_line = change_line
+        self.delta = delta
+        self.dir = dir
+    
+    def what_to_follow(self, wp_index):
+        wp_to_follow = self._wps[wp_index][0]
+        if self._change_line == 'left':
+            wp_to_follow = self._wps[wp_index][0].get_left_lane()
+        elif self._change_line == 'right':
+            wp_to_follow = self._wps[wp_index][0].get_right_lane()
+        elif self._change_line == 'shifting':
+            shift = 1
+            if self.dir == "right":
+                shift = -1
+            real_delta = self.delta * shift
+            left_lane_waypoint = wp_to_follow.get_left_lane()
+            diff_norm = 0
+            if left_lane_waypoint:
+                diff = np.array([left_lane_waypoint.transform.location.x - wp_to_follow.transform.location.x,
+                                left_lane_waypoint.transform.location.y - wp_to_follow.transform.location.y,
+                                left_lane_waypoint.transform.location.z - wp_to_follow.transform.location.z])
+                diff_norm = np.linalg.norm(diff)
+            if diff_norm > 0:
+                diff_normalized = diff / diff_norm
+                print("diff_normalized: ", diff_normalized)
+                print("real_delta: ", real_delta)
+                displacement = diff_normalized * real_delta
+                waypoint = wp_to_follow
+                print("self._wps[wp_index][0].transform.location: ", waypoint.transform.location)
+                x = waypoint.transform.location.x + displacement[0]
+                y = waypoint.transform.location.y + displacement[1]
+                z = waypoint.transform.location.z + displacement[2]
+                new_location = carla.Location(x, y, z)
+                wp_to_follow = MyWaypoint(new_location, waypoint.transform.rotation)
+                print("self._wps[wp_index][0].transform.location", wp_to_follow.get_transform().location)
+                print("self._wps[wp_index][0].transform.location", wp_to_follow.transform.location)
+        return wp_to_follow
         
 class PIDLateralController():
     """

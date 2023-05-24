@@ -292,41 +292,16 @@ class LocalPlanner(object):
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
                     
             if self._change_line == 'left':
-                self._vehicle_controller.ourSetNextWaypoint(self.target_waypoint.get_left_lane())
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line)
                 control = self._vehicle_controller.run_step(self._target_speed)
             elif self._change_line == 'right':
-                self._vehicle_controller.ourSetNextWaypoint(self.target_waypoint.get_right_lane())
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line)
                 control = self._vehicle_controller.run_step(self._target_speed)
             elif self._change_line == 'shifting':
-                shift = 1
-                if self.dir == "right":
-                    shift = -1
-                real_delta = self.delta * shift
-                left_lane_waypoint = self.target_waypoint.get_left_lane()
-                diff_norm = 0
-                new_waypoint = self.target_waypoint
-                if left_lane_waypoint:
-                    diff = np.array([left_lane_waypoint.transform.location.x - self.target_waypoint.transform.location.x,
-                                    left_lane_waypoint.transform.location.y - self.target_waypoint.transform.location.y,
-                                    left_lane_waypoint.transform.location.z - self.target_waypoint.transform.location.z])
-                    diff_norm = np.linalg.norm(diff)
-                if diff_norm > 0:
-                    diff_normalized = diff / diff_norm
-                    print("diff_normalized: ", diff_normalized)
-                    print("real_delta: ", real_delta)
-                    displacement = diff_normalized * real_delta
-                    waypoint = self.target_waypoint
-                    print("self.target_waypoint.transform.location: ", waypoint.transform.location)
-                    x = waypoint.transform.location.x + displacement[0]
-                    y = waypoint.transform.location.y + displacement[1]
-                    z = waypoint.transform.location.z + displacement[2]
-                    new_location = carla.Location(x, y, z)
-                    new_waypoint = MyWaypoint(new_location, waypoint.transform.rotation)
-                    print("self.target_waypoint.transform.location", new_waypoint.get_transform().location)
-                    print("self.target_waypoint.transform.location", new_waypoint.transform.location)
-                    self._vehicle_controller.ourSetNextWaypoint(new_waypoint)
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line, self.delta, self.dir)
                 control = self._vehicle_controller.run_step(self._target_speed)
             else:
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line)
                 control = self._vehicle_controller.run_step(self._target_speed)
 
         #if True:

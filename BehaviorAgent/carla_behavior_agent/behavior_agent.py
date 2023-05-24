@@ -1008,7 +1008,7 @@ class BehaviorAgent(BasicAgent):
         obs_type = target_vehicle.type_id
         print("target_vehicle: ", target_vehicle, "obs_type: ", obs_type)
         if obs_type in ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century"]:
-            sec_costant = 0.4
+            sec_costant = 0.6
             print("sec_costant: ", sec_costant, "obs_type: ", obs_type)
             # input()
         elif dir != "right":
@@ -1016,7 +1016,7 @@ class BehaviorAgent(BasicAgent):
             print("sec_costant: ", sec_costant)
             # input()
         else:
-            sec_costant = 0.2
+            sec_costant = 0.35
             print("sec_costant: ", sec_costant)
             # input()
         my_lat_extend = self._vehicle.bounding_box.extent.y
