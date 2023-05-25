@@ -427,7 +427,7 @@ class BasicAgent(object):
                                 if ego_polygon.intersects(target_polygon):
                                     print('Interseco con un vehicle davanti nello stop :(')
                                     # draw_bbox(self._world, target_vehicle,color=carla.Color(0,0,255,0))
-                                    return (True, stop_sign,dist_from_stop)
+                                    return (True, stop_sign,dist_from_stop-2)
                 if dist_from_stop < 2.5:
                     self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
                     self._last_stop_signid = stop_sign.id
@@ -973,7 +973,7 @@ class BasicAgent(object):
                     print(angle, target_vehicle)
 
                     if target_vehicle.get_transform().location.distance(wp.transform.location) > ego_location.distance(wp.transform.location):
-                        if angle < 55:
+                        if angle < 57:
                             print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
                             return (False, None, -1)
 

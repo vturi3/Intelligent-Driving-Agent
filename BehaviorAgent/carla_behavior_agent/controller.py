@@ -292,7 +292,9 @@ class StanleyLateralController():
         observed_heading = np.deg2rad(vehicle_transform.rotation.yaw)
         observed_x = ego_loc.x
         observed_y = ego_loc.y
-        if speed_estimate < 20:
+        if speed_estimate < 5:
+            self._lookahead_distance = 0
+        elif speed_estimate < 20:
             self._lookahead_distance = 1
         else:
             self._lookahead_distance = 1.5
@@ -305,7 +307,7 @@ class StanleyLateralController():
         desired_x = wp_to_follow.transform.location.x
         desired_y = wp_to_follow.transform.location.y
         print("ce_idx: ", ce_idx)
-        print(self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0])
+        # print(self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0])
         # Get Target Heading
         if ce_idx < len(self._wps)-1:
             next = self.what_to_follow(ce_idx+1)
