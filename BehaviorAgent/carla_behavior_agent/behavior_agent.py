@@ -738,7 +738,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         #FIN QUI C'È L'ANALISI DELLO SPAZIO DA SORPASSARE SE I VEICOLI FOSSERO FERMI
         #per il calcolo delle velocità utilizzeremo il metodo delle velocità relative:
-        standard_acceleration = 2.68 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
+        standard_acceleration = 2.61 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
         #a 0.75 che è il massimo throttle che viene realizzato
         last_surpass = to_surpass[-1]
         last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
@@ -810,12 +810,12 @@ class BehaviorAgent(BasicAgent):
             else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                 print("il possible collident è fermo")
                 print("il to arrive si trova: ", to_arrive.transform.location)
-                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/4)
+                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/3.9)
             print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
             print("scalar_val: ", scalar_val)
             if time_to_surpass < time_to_collide and (scalar_val > 0 or dir == "right"):
                 print("posso superare ritorno true da cond to surpass")
-                # input()
+                input()
                 return True, last_surpass
             else:
                 print("non posso superare ritorno false da cond to surpass")
@@ -823,7 +823,7 @@ class BehaviorAgent(BasicAgent):
                 return False,last_surpass
         else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
             print("Sto per ritornare True ma sono nell'ultimo else")
-            # input()
+            input()
             return True, last_surpass
 
 
