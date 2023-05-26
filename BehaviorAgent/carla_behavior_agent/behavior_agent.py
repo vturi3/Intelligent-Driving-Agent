@@ -815,15 +815,15 @@ class BehaviorAgent(BasicAgent):
             print("scalar_val: ", scalar_val)
             if time_to_surpass < time_to_collide and (scalar_val > 0 or dir == "right"):
                 print("posso superare ritorno true da cond to surpass")
-                input()
+                # input()
                 return True, last_surpass
             else:
                 print("non posso superare ritorno false da cond to surpass")
-                # input()
+                # # input()
                 return False,last_surpass
         else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
             print("Sto per ritornare True ma sono nell'ultimo else")
-            input()
+            # input()
             return True, last_surpass
 
 
