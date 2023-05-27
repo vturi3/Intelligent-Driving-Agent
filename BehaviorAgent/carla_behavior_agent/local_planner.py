@@ -394,14 +394,18 @@ class LocalPlanner(object):
 
         return control
 
-    def get_incoming_waypoint_and_direction(self, steps=3):
+    def get_incoming_waypoint_and_direction(self, steps=3, all_list=False):
         """
         Returns direction and waypoint at a distance ahead defined by the user.
 
             :param steps: number of steps to get the incoming waypoint.
         """
         if len(self._waypoints_queue) > steps:
-            return self._waypoints_queue[steps]
+            if all_list:
+                to_ret = [self._waypoints_queue[i] for i in range(steps)]
+                return to_ret
+            else:
+                return self._waypoints_queue[steps]
 
         else:
             try:
