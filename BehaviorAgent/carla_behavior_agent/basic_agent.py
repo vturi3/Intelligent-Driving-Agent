@@ -974,6 +974,7 @@ class BasicAgent(object):
 
                     if target_vehicle.get_transform().location.distance(wp.transform.location) > ego_location.distance(wp.transform.location):
                         if angle < 57:
+                            self._local_planner.set_speed(self._vehicle.get_speed_limit())
                             print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
                             return (False, None, -1)
 
