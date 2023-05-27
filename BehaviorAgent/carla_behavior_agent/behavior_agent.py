@@ -493,8 +493,12 @@ class BehaviorAgent(BasicAgent):
         #         self._local_planner._change_line = "None"
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
-
-        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction and not self._surpassing_obj and self.security_i_rentered is None:
+        inc_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=int((self._speed_limit) / 3), all_list = True)
+        try:
+            near_junction = any(wp[0].is_junction for wp in inc_wpt)
+        except:
+            near_junction = True
+        if not near_junction and not ego_vehicle_wp.is_junction and not self._surpassing_obj and self.security_i_rentered is None:
             if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
                 return self._local_planner.run_step(debug=debug)
 
@@ -858,7 +862,7 @@ class BehaviorAgent(BasicAgent):
                 self.surpass_vehicle = obj_to_s
                 print('sto per superare')
                 self._direction = last_dir
-                #input()
+                # input()
                 return True
             else:
                 self._surpassing_obj = False

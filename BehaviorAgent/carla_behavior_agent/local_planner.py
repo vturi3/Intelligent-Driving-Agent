@@ -292,17 +292,21 @@ class LocalPlanner(object):
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
                     
             if self._change_line == 'left':
+                print("self._change_line LEFT")
+                # input()
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line)
-                control = self._vehicle_controller.run_step(self._target_speed)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
             elif self._change_line == 'right':
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line)
-                control = self._vehicle_controller.run_step(self._target_speed)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
             elif self._change_line == 'shifting':
+                print("self._change_line SHIFTING")
+                # input()
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line, self.delta, self.dir)
-                control = self._vehicle_controller.run_step(self._target_speed)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
             else:
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line)
-                control = self._vehicle_controller.run_step(self._target_speed)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
 
         #if True:
            #draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
@@ -363,7 +367,7 @@ class LocalPlanner(object):
         else:
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
 
-            control = self._vehicle_controller.run_step_only_lateral(self.target_waypoint)
+            control = self._vehicle_controller.run_step_only_lateral(self.target_waypoint, self._map)
     
             
 
@@ -372,14 +376,18 @@ class LocalPlanner(object):
 
         return control
 
-    def get_incoming_waypoint_and_direction(self, steps=3):
+    def get_incoming_waypoint_and_direction(self, steps=3, all_list=False):
         """
         Returns direction and waypoint at a distance ahead defined by the user.
 
             :param steps: number of steps to get the incoming waypoint.
         """
         if len(self._waypoints_queue) > steps:
-            return self._waypoints_queue[steps]
+            if all_list:
+                to_ret = [self._waypoints_queue[i] for i in range(steps)]
+                return to_ret
+            else:
+                return self._waypoints_queue[steps]
 
         else:
             try:

@@ -62,7 +62,7 @@ class VehicleController():
         self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
         self._lat_controller = StanleyLateralController(self._vehicle, offset, **args_lateral)
     # vehicle, offset=0, lookahead_distance=0.65, K_V=1.0, K_S=0.0, dt=0.03
-    def run_step_only_lateral(self, waypoint):
+    def run_step_only_lateral(self, waypoint, map):
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint
@@ -73,7 +73,7 @@ class VehicleController():
             :return: distance (in meters) to the waypoint
         """
 
-        current_steering = self._lat_controller.run_step()
+        current_steering = self._lat_controller.run_step(map)
 
         control = carla.VehicleControl()
         control.throttle = 0.0
@@ -98,7 +98,7 @@ class VehicleController():
         return control
 
 
-    def run_step(self, target_speed):
+    def run_step(self, target_speed, map):
         """
         Execute one step of control invoking both lateral and longitudinal
         PID controllers to reach a target waypoint
@@ -110,7 +110,7 @@ class VehicleController():
         """
 
         acceleration = self._lon_controller.run_step(target_speed)
-        current_steering = self._lat_controller.run_step()
+        current_steering = self._lat_controller.run_step(map)
         control = carla.VehicleControl()
         if acceleration >= 0.0:
             control.throttle = min(acceleration, self.max_throt)
@@ -246,7 +246,7 @@ class StanleyLateralController():
         self.dir = "left"
         self._change_line = "None"
 
-    def run_step(self):
+    def run_step(self, map):
         """
         Execute one step of lateral control to steer
         the vehicle towards a certain waypoin.
@@ -255,7 +255,7 @@ class StanleyLateralController():
             -1 maximum steering to left
             +1 maximum steering to right
         """
-        return self._stanley_control(self._vehicle.get_transform())
+        return self._stanley_control(self._vehicle.get_transform(), map)
     
     def _get_lookahead_index(self, ego_loc, lookahead_distance):
         min_idx       = 0
@@ -279,7 +279,7 @@ class StanleyLateralController():
             lookahead_idx = i
         return lookahead_idx
     
-    def _stanley_control(self, vehicle_transform):
+    def _stanley_control(self, vehicle_transform, map):
         """
         Estimate the steering angle of the vehicle based on the Stanley equations
 
@@ -301,7 +301,7 @@ class StanleyLateralController():
         # Get Target Waypoint
         ce_idx = self._get_lookahead_index(ego_loc,self._lookahead_distance)
 
-        wp_to_follow = self.what_to_follow(ce_idx)
+        wp_to_follow,ce_idx  = self.what_to_follow(ce_idx, map)
         
         #draw_waypoints(self._vehicle.get_world(), [self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0]], 1.0)
         desired_x = wp_to_follow.transform.location.x
@@ -310,11 +310,11 @@ class StanleyLateralController():
         # print(self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0])
         # Get Target Heading
         if ce_idx < len(self._wps)-1:
-            next = self.what_to_follow(ce_idx+1)
+            next, ce_idx = self.what_to_follow(ce_idx+1, map)
             desired_heading_x = next.transform.location.x - wp_to_follow.transform.location.x
             desired_heading_y = next.transform.location.y - wp_to_follow.transform.location.y
         else:
-            previous = self.what_to_follow(ce_idx-1)
+            previous, ce_idx = self.what_to_follow(ce_idx-1, map)
             desired_heading_x = wp_to_follow.transform.location.x - previous.transform.location.x
             desired_heading_y = wp_to_follow.transform.location.y - previous.transform.location.y
         
@@ -373,7 +373,7 @@ class StanleyLateralController():
         self.delta = delta
         self.dir = dir
     
-    def what_to_follow(self, wp_index):
+    def what_to_follow(self, wp_index, map):
         wp_to_follow = self._wps[wp_index][0]
         if self._change_line == 'left':
             wp_to_follow = self._wps[wp_index][0].get_left_lane()
@@ -405,7 +405,18 @@ class StanleyLateralController():
                 wp_to_follow = MyWaypoint(new_location, waypoint.transform.rotation)
                 print("self._wps[wp_index][0].transform.location", wp_to_follow.get_transform().location)
                 print("self._wps[wp_index][0].transform.location", wp_to_follow.transform.location)
-        return wp_to_follow
+        else:
+            first_index = wp_index
+            try:
+                if (self._wps[wp_index-1][0].lane_id == self._wps[wp_index+1][0].lane_id) and self._wps[wp_index+1][0].lane_id != wp_to_follow.lane_id:
+                    print("self._wps[wp_index+1][0].lane_id: ", self._wps[wp_index+1][0].lane_id)
+                    wp_index += 1
+                    print("wp_to_follow.lane_id: ", wp_to_follow.lane_id)
+                    # input()
+            except:
+                wp_index = first_index
+            wp_to_follow = self._wps[wp_index][0]
+        return wp_to_follow, wp_index
         
 class PIDLateralController():
     """
