@@ -11,7 +11,7 @@
                 "red_light": 0.0,
                 "stop_infraction": 0.0,
                 "outside_route_lanes": 0,
-                "min_speed_infractions": 0.767,
+                "min_speed_infractions": 0.815,
                 "yield_emergency_vehicles_infractions": 0.0,
                 "scenario_timeouts": 0.0,
                 "route_dev": 0.0,
@@ -19,14 +19,14 @@
                 "route_timeout": 0.0
             },
             "scores_mean": {
-                "score_composed": 95.533311,
+                "score_composed": 96.098872,
                 "score_route": 100.0,
-                "score_penalty": 0.955333
+                "score_penalty": 0.960989
             },
             "scores_std_dev": {
-                "score_composed": 6.34,
+                "score_composed": 4.811,
                 "score_route": 0.0,
-                "score_penalty": 0.063
+                "score_penalty": 0.048
             },
             "meta": {
                 "exceptions": []
@@ -67,14 +67,14 @@
                 "meta": {
                     "route_length": 4210.947,
                     "duration_game": 484.95,
-                    "duration_system": 678.843
+                    "duration_system": 684.848
                 }
             },
             {
                 "index": 1,
                 "route_id": "RouteScenario_1_rep0",
                 "status": "Completed",
-                "num_infractions": 1,
+                "num_infractions": 3,
                 "infractions": {
                     "collisions_layout": [],
                     "collisions_pedestrian": [],
@@ -83,7 +83,9 @@
                     "stop_infraction": [],
                     "outside_route_lanes": [],
                     "min_speed_infractions": [
-                        "Average speed is 93.43% of the surrounding traffic's one"
+                        "Average speed is 92.61% of the surrounding traffic's one",
+                        "Average speed is 98.42% of the surrounding traffic's one",
+                        "Average speed is 98.42% of the surrounding traffic's one"
                     ],
                     "yield_emergency_vehicles_infractions": [],
                     "scenario_timeouts": [],
@@ -93,13 +95,13 @@
                 },
                 "scores": {
                     "score_route": 100,
-                    "score_penalty": 0.98029,
-                    "score_composed": 98.029
+                    "score_penalty": 0.968582,
+                    "score_composed": 96.858214
                 },
                 "meta": {
                     "route_length": 3206.913,
-                    "duration_game": 400.25,
-                    "duration_system": 605.957
+                    "duration_game": 399.25,
+                    "duration_system": 585.881
                 }
             },
             {
@@ -115,10 +117,10 @@
                     "stop_infraction": [],
                     "outside_route_lanes": [],
                     "min_speed_infractions": [
-                        "Average speed is 85.81% of the surrounding traffic's one",
-                        "Average speed is 90.19% of the surrounding traffic's one",
-                        "Average speed is 92.02% of the surrounding traffic's one",
-                        "Average speed is 92.02% of the surrounding traffic's one"
+                        "Average speed is 88.39% of the surrounding traffic's one",
+                        "Average speed is 89.16% of the surrounding traffic's one",
+                        "Average speed is 84.0% of the surrounding traffic's one",
+                        "Average speed is 84.0% of the surrounding traffic's one"
                     ],
                     "yield_emergency_vehicles_infractions": [],
                     "scenario_timeouts": [],
@@ -128,13 +130,13 @@
                 },
                 "scores": {
                     "score_route": 100,
-                    "score_penalty": 0.885293,
-                    "score_composed": 88.529279
+                    "score_penalty": 0.846291,
+                    "score_composed": 84.629097
                 },
                 "meta": {
                     "route_length": 884.393,
-                    "duration_game": 256.3,
-                    "duration_system": 702.766
+                    "duration_game": 256.95,
+                    "duration_system": 715.798
                 }
             },
             {
@@ -164,7 +166,7 @@
                 "meta": {
                     "route_length": 1231.288,
                     "duration_game": 373.95,
-                    "duration_system": 849.098
+                    "duration_system": 852.091
                 }
             },
             {
@@ -193,8 +195,8 @@
                 },
                 "meta": {
                     "route_length": 900.445,
-                    "duration_game": 200.3,
-                    "duration_system": 430.534
+                    "duration_game": 200.5,
+                    "duration_system": 432.544
                 }
             },
             {
@@ -210,8 +212,8 @@
                     "stop_infraction": [],
                     "outside_route_lanes": [],
                     "min_speed_infractions": [
-                        "Average speed is 91.8% of the surrounding traffic's one",
-                        "Average speed is 91.8% of the surrounding traffic's one"
+                        "Average speed is 87.68% of the surrounding traffic's one",
+                        "Average speed is 87.68% of the surrounding traffic's one"
                     ],
                     "yield_emergency_vehicles_infractions": [],
                     "scenario_timeouts": [],
@@ -221,13 +223,13 @@
                 },
                 "scores": {
                     "score_route": 100,
-                    "score_penalty": 0.951405,
-                    "score_composed": 95.140516
+                    "score_penalty": 0.927446,
+                    "score_composed": 92.744604
                 },
                 "meta": {
                     "route_length": 4210.947,
-                    "duration_game": 488.1,
-                    "duration_system": 737.454
+                    "duration_game": 498.95,
+                    "duration_system": 707.155
                 }
             },
             {
@@ -244,8 +246,8 @@
                     "outside_route_lanes": [],
                     "min_speed_infractions": [
                         "Average speed is 92.61% of the surrounding traffic's one",
-                        "Average speed is 99.43% of the surrounding traffic's one",
-                        "Average speed is 99.43% of the surrounding traffic's one"
+                        "Average speed is 98.43% of the surrounding traffic's one",
+                        "Average speed is 98.43% of the surrounding traffic's one"
                     ],
                     "yield_emergency_vehicles_infractions": [],
                     "scenario_timeouts": [],
@@ -255,20 +257,20 @@
                 },
                 "scores": {
                     "score_route": 100,
-                    "score_penalty": 0.974489,
-                    "score_composed": 97.448868
+                    "score_penalty": 0.968641,
+                    "score_composed": 96.864053
                 },
                 "meta": {
                     "route_length": 3206.913,
-                    "duration_game": 400.7,
-                    "duration_system": 653.139
+                    "duration_game": 396.8,
+                    "duration_system": 585.936
                 }
             },
             {
                 "index": 7,
                 "route_id": "RouteScenario_7_rep0",
                 "status": "Completed",
-                "num_infractions": 4,
+                "num_infractions": 3,
                 "infractions": {
                     "collisions_layout": [],
                     "collisions_pedestrian": [],
@@ -277,10 +279,9 @@
                     "stop_infraction": [],
                     "outside_route_lanes": [],
                     "min_speed_infractions": [
-                        "Average speed is 87.88% of the surrounding traffic's one",
-                        "Average speed is 95.11% of the surrounding traffic's one",
-                        "Average speed is 73.79% of the surrounding traffic's one",
-                        "Average speed is 73.79% of the surrounding traffic's one"
+                        "Average speed is 87.75% of the surrounding traffic's one",
+                        "Average speed is 96.5% of the surrounding traffic's one",
+                        "Average speed is 96.5% of the surrounding traffic's one"
                     ],
                     "yield_emergency_vehicles_infractions": [],
                     "scenario_timeouts": [],
@@ -290,13 +291,13 @@
                 },
                 "scores": {
                     "score_route": 100,
-                    "score_penalty": 0.806055,
-                    "score_composed": 80.605497
+                    "score_penalty": 0.943128,
+                    "score_composed": 94.312795
                 },
                 "meta": {
                     "route_length": 884.393,
-                    "duration_game": 258.55,
-                    "duration_system": 734.84
+                    "duration_game": 234.1,
+                    "duration_system": 652.749
                 }
             },
             {
@@ -326,7 +327,7 @@
                 "meta": {
                     "route_length": 1231.288,
                     "duration_game": 375.05,
-                    "duration_system": 855.087
+                    "duration_system": 856.065
                 }
             },
             {
@@ -355,8 +356,8 @@
                 },
                 "meta": {
                     "route_length": 900.445,
-                    "duration_game": 200.5,
-                    "duration_system": 428.538
+                    "duration_game": 200.3,
+                    "duration_system": 433.539
                 }
             }
         ]
@@ -372,9 +373,9 @@
         "carla_speedometer"
     ],
     "values": [
-        "95.533311",
+        "96.098872",
         "100.0",
-        "0.955333",
+        "0.960989",
         "0.0",
         "0.0",
         "0.0",
@@ -386,7 +387,7 @@
         "0.0",
         "0.0",
         "0.0",
-        "0.767"
+        "0.815"
     ],
     "labels": [
         "Avg. driving score",
