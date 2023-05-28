@@ -493,8 +493,12 @@ class BehaviorAgent(BasicAgent):
         #         self._local_planner._change_line = "None"
         #         self._surpassing_police = False
         #         return self._local_planner.run_step(debug=debug)
-
-        if not self._incoming_waypoint.is_junction and not ego_vehicle_wp.is_junction and not self._surpassing_obj and self.security_i_rentered is None:
+        inc_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=int((self._speed_limit) / 3), all_list = True)
+        try:
+            near_junction = any(wp[0].is_junction for wp in inc_wpt)
+        except:
+            near_junction = True
+        if not near_junction and not ego_vehicle_wp.is_junction and not self._surpassing_obj and self.security_i_rentered is None:
             if self.obstacle_avoidance(obstacle_dict, ego_vehicle_wp, ego_vertexs_lane_id):
                 return self._local_planner.run_step(debug=debug)
 
@@ -738,7 +742,7 @@ class BehaviorAgent(BasicAgent):
             self._direction = RoadOption.CHANGELANERIGHT
         #FIN QUI C'È L'ANALISI DELLO SPAZIO DA SORPASSARE SE I VEICOLI FOSSERO FERMI
         #per il calcolo delle velocità utilizzeremo il metodo delle velocità relative:
-        standard_acceleration = 2.68 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
+        standard_acceleration = 2.61 #valutata in m/s^2 è valutata empiricamente considerando la massima accelerazione che puo avere un veicolo, ed è messa proporzionale
         #a 0.75 che è il massimo throttle che viene realizzato
         last_surpass = to_surpass[-1]
         last_surpass_corners, last_surpass_ext_x, last_surpass_ext_y, last_surpass_ext_z  = self.get_bounding_box_corners(last_surpass) 
@@ -810,7 +814,7 @@ class BehaviorAgent(BasicAgent):
             else: # il possible collident è fermo, quindi vedo solo che si trova in una posizione tale per cui io riesco a terminare il mio sorpasso
                 print("il possible collident è fermo")
                 print("il to arrive si trova: ", to_arrive.transform.location)
-                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/4)
+                time_to_collide = space_to_collide/(possible_collident.get_speed_limit()/3.9)
             print("time_to_collide: ", time_to_collide, "time_to_surpass: ", time_to_surpass, "space_to_collide: ", space_to_collide)
             print("scalar_val: ", scalar_val)
             if time_to_surpass < time_to_collide and (scalar_val > 0 or dir == "right"):
@@ -819,7 +823,7 @@ class BehaviorAgent(BasicAgent):
                 return True, last_surpass
             else:
                 print("non posso superare ritorno false da cond to surpass")
-                # input()
+                # # input()
                 return False,last_surpass
         else: #il possible collident è none, cioe non ho trovato nessun possibile ostacolo nell'altra corsia
             print("Sto per ritornare True ma sono nell'ultimo else")
@@ -834,10 +838,11 @@ class BehaviorAgent(BasicAgent):
         if obj_to_s:
             enable, last_surpass = self.cond_to_start_surpass(ego_vehicle_wp, dir)
             if enable:
+                
                 list_no_other_step = ["vehicle.bh.crossbike", "vehicle.gazelle.omafiets", "vehicle.diamondback.century", "static.prop.trafficwarning","static.prop.warningaccident"]
                 #input()
                 #if not com_vehicle_state or (com_vehicle_state and com_vehicle_distance>80):
-                # print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
+                #print('STO PER STARTARE IL SORPASSO, IL VEICOLO DISTA: ', com_vehicle_distance, "ed è: ", com_vehicle)
                 # input()
                 #self._my_flag = True
                 self._before_surpass_lane_id = ego_vehicle_wp.lane_id
@@ -858,7 +863,7 @@ class BehaviorAgent(BasicAgent):
                 self.surpass_vehicle = obj_to_s
                 print('sto per superare')
                 self._direction = last_dir
-                #input()
+                # input()
                 return True
             else:
                 self._surpassing_obj = False
