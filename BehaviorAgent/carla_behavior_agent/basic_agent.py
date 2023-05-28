@@ -275,7 +275,7 @@ class BasicAgent(object):
 
         if not max_distance:
             max_distance = self._base_tlight_threshold
-        # qua verifico se mi sono gia fermato allo step precedete.
+
         if self._last_traffic_light:
             if self._last_traffic_light.state != carla.TrafficLightState.Red:
                 self._last_traffic_light = None
@@ -295,13 +295,12 @@ class BasicAgent(object):
 
             if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
                 continue
-            # Escludo semafori di altre strade.
+
             if trigger_wp.road_id != ego_vehicle_waypoint.road_id:
                 continue
 
-            # orientamento semaforo, cosi gestisco se si trova diffronte a me o no,
             ve_dir = ego_vehicle_waypoint.transform.get_forward_vector()
-            wp_dir = trigger_wp.transform.get_forward_vector() 
+            wp_dir = trigger_wp.transform.get_forward_vector()
             dot_ve_wp = ve_dir.x * wp_dir.x + ve_dir.y * wp_dir.y + ve_dir.z * wp_dir.z
 
             if dot_ve_wp < 0:
@@ -431,8 +430,6 @@ class BasicAgent(object):
             :param max_distance: max freespace to check for obstacles.
                 If None, the base threshold value is used
         """
-        # funzione x valutare se un ostacolo si trova in una posizione bloccate x il nostro agente (bloccante nel senso che sta dove dobbiamo andare noi). Gli passiamo la lista (come detto prima), max distanza sotto la quale lo consideriamo bloccante.
-
         if self._ignore_vehicles:
             return (False, None, -1)
 
@@ -449,7 +446,7 @@ class BasicAgent(object):
         if ego_wpt.lane_id < 0 and lane_offset != 0:
             lane_offset *= -1
 
-        # Get the transform of the front of the ego, Vedo in quale lane si trova e sta cercando di capire se esiste un offset della lane
+        # Get the transform of the front of the ego
         ego_forward_vector = ego_transform.get_forward_vector()
         ego_extent = self._vehicle.bounding_box.extent.x
         ego_front_transform = ego_transform
@@ -457,25 +454,21 @@ class BasicAgent(object):
             x=ego_extent * ego_forward_vector.x,
             y=ego_extent * ego_forward_vector.y,
         )
-        # l'idea è verficiare dove voglio andare e dove si trova il vehicle, se si trova sulla nostra corsia e strada. Quello che succede è valutare la direzione e la posizione del vehicle.
 
         for target_vehicle in vehicle_list:
-            # per ogni vehicle della lista
             target_transform = target_vehicle.get_transform()
             target_wpt = self._map.get_waypoint(target_transform.location, lane_type=carla.LaneType.Any)
-            # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
-            # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
+
+            # Simplified version for outside junctions
             if not ego_wpt.is_junction or not target_wpt.is_junction:
 
                 if target_wpt.road_id != ego_wpt.road_id or target_wpt.lane_id != ego_wpt.lane_id  + lane_offset:
-                    # prende dalla coda dei waypoint dati al local planner si prende solo il waipoint. la direction esprimre l'intenzione, steps 3 perchè valuta quello in po piu avanti.
                     next_wpt = self._local_planner.get_incoming_waypoint_and_direction(steps=3)[0]
                     if not next_wpt:
                         continue
                     if target_wpt.road_id != next_wpt.road_id or target_wpt.lane_id != next_wpt.lane_id  + lane_offset:
                         continue
 
-                # la rear trasform punto posteriore del vehicolo, se si trova ad una certa distanza dal nostro punto anteriore,
                 target_forward_vector = target_transform.get_forward_vector()
                 target_extent = target_vehicle.bounding_box.extent.x
                 target_rear_transform = target_transform
@@ -483,11 +476,11 @@ class BasicAgent(object):
                     x=target_extent * target_forward_vector.x,
                     y=target_extent * target_forward_vector.y,
                 )
-                # low angle th e up, sono angoli che vengono presi in considearzione. Capisce se ho possibile collisione. Gli angoli mi servono in base alle intenzioni, magari stiamo andando da due parti diverse quindi nn ci scontreremo e nn lo cago.
+
                 if is_within_distance(target_rear_transform, ego_front_transform, max_distance, [low_angle_th, up_angle_th]):
                     return (True, target_vehicle, compute_distance(target_transform.location, ego_transform.location))
 
-            # Waypoints aren't reliable, check the proximity of the vehicle to the route, in questo caso sono in un incrocio. Segue una logica che dipende dalla traiettoria, viene costrituito in poligono sulla nostra traiettoria. Viene valutato dove ci trovamo, quanto siamo grandi (laterali), per ogni punto del plan valuto se la distanza nostra dal punto del plan è troppo lontana non mi interessa ( prendo solo punti plan vicini ). In quel punto del plan ci passo, voglio sapere li il mio "poligono". Alla fine costruisco nei waypoint i poligono su tutti i punti del plan, cosi ho un poligono della nstra traiettoria (l'abbiamo visto a lezione).
+            # Waypoints aren't reliable, check the proximity of the vehicle to the route
             else:
                 route_bb = []
                 ego_location = ego_transform.location
@@ -513,8 +506,7 @@ class BasicAgent(object):
                     return (False, None, -1)
                 ego_polygon = Polygon(route_bb)
 
-                # Compare the two polygons, per tutti gli obj passati in ingresso, se mi trovo in intersection faccio questa valuazione. Se sono io quello che analizzo o è troppo distanet nn lo cago. Per gli altri prendo boundingbox veicolo, prendo i vertici nel mondo e verifico se collidono con il mio.
-                # Qua gia si potrebbe fare la modifica suggerita dal prof in classe dei cerchi. Inoltre viene valutato solo la posizione attuale del vehicle. (prendendo info su direzione e velocita)
+                # Compare the two polygons
                 for target_vehicle in vehicle_list:
                     target_extent = target_vehicle.bounding_box.extent.x
                     if target_vehicle.id == self._vehicle.id:

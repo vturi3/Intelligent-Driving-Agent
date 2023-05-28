@@ -88,26 +88,17 @@ def is_within_distance(target_transform, reference_transform, max_distance, angl
     # Further than the max distance
     if norm_target > max_distance:
         return False
- 
+
     # We don't care about the angle, nothing else to check
     if not angle_interval:
         return True
 
-    #tali angoli servono per i calcoli di seguito riportati
     min_angle = angle_interval[0]
     max_angle = angle_interval[1]
 
-    #fwd sarebbe il vettore dell'orientamento del reference
     fwd = reference_transform.get_forward_vector()
-    #forward vector ne è semplicemente la trasformazione di questo oggetto in np array
     forward_vector = np.array([fwd.x, fwd.y])
-    #calcoliamo il coseno tra i due vettori, poi conseguentemente l'angolo in radianti tra il vettore di orientamento del veicolo e quello che 
-    # indica la differenza di posizione quindi il vettore che congiunge il nostro veicolo con quell'altro.
     angle = math.degrees(math.acos(np.clip(np.dot(forward_vector, target_vector) / norm_target, -1., 1.)))
-    #duqnue questo veicolo sarà in collisione se è a una distanza piccola da noi e se si trova nell'intervallo di angoli che abbiamo specificato,
-    #quindi serve per fare un controllo se per esempio il nostro veicolo e l'altro vanno in direzioni differenti non avranno influenza l'uno sull'altro.
-    #ovviamente pero gli angoli specificati sono dipendenti dall'attività che vogliamo intraprendere con il nostro veicolo e quindi conseguentemente 
-    #sono dipendenti dal controllo che è necessario fare.
 
     return min_angle < angle < max_angle
 
