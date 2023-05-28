@@ -863,7 +863,7 @@ class BehaviorAgent(BasicAgent):
                 self.surpass_vehicle = obj_to_s
                 print('sto per superare')
                 self._direction = last_dir
-                input()
+                # input()
                 return True
             else:
                 self._surpassing_obj = False
