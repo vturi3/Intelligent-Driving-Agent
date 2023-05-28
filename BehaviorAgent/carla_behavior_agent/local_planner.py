@@ -265,7 +265,7 @@ class LocalPlanner(object):
             control.manual_gear_shift = False
         else:
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
-            control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
+            control = self._vehicle_controller.run_step(self._target_speed, self._map)
 
         #if debug:
         #    draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
