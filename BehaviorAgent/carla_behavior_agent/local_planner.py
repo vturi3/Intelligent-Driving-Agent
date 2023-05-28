@@ -80,7 +80,7 @@ class LocalPlanner(object):
         self._sampling_radius = 2.0
         self._args_lateral_dict = {'K_V': 0.0, 'K_S': 0.0, 'dt': 0.0}
         self._args_longitudinal_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
-        self._max_throt = 0.75
+        self._max_throt = 0.85
         self._max_brake = 0.3
         self._max_steer = 0.8
         self._offset = 0

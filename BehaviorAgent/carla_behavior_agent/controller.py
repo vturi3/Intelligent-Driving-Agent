@@ -3,393 +3,458 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-""" This module contains PID controllers to perform lateral and longitudinal control. """
+""" This module contains a local planner to perform low-level waypoint following based on PID controllers. """
 
+from enum import IntEnum
 from collections import deque
-import math
-import numpy as np
+import random
+
 import carla
-from misc import get_speed
-import sys
+from controller import VehicleController
+from misc import draw_waypoints, get_speed
+import numpy as np
 
-from math import atan2, atan, hypot
-
-
-class VehicleController():
+class RoadOption(IntEnum):
     """
-    VehicleController is the combination of longitudinal PID controller
-    and a Stanley as lateral controller to perform the low level control 
-    a vehicle from client side
+    RoadOption represents the possible topological configurations when moving from a segment of lane to other.
+
+    """
+    VOID = -1
+    LEFT = 1
+    RIGHT = 2
+    STRAIGHT = 3
+    LANEFOLLOW = 4
+    CHANGELANELEFT = 5
+    CHANGELANERIGHT = 6
+
+class MyWaypoint:
+    def __init__(self, location, rotation=None):
+        self.transform = carla.Transform(location, rotation)
+    
+    def set_transform(self, transform):
+        self.transform = transform
+
+    def get_transform(self):
+        return self.transform
+    
+class LocalPlanner(object):
+    """
+    LocalPlanner implements the basic behavior of following a
+    trajectory of waypoints that is generated on-the-fly.
+
+    The low-level motion of the vehicle is computed by using two PID controllers,
+    one is used for the lateral control and the other for the longitudinal control (cruise speed).
+
+    When multiple paths are available (intersections) this local planner makes a random choice,
+    unless a given global plan has already been specified.
     """
 
-    def __init__(self, vehicle, args_lateral, args_longitudinal, offset=0, max_throttle=0.75, max_brake=0.3,
-                 max_steering=0.8):
+    def __init__(self, vehicle, opt_dict={}, map_inst=None):
         """
-        Constructor method.
-
         :param vehicle: actor to apply to local planner logic onto
-        :param args_lateral: dictionary of arguments to set the lateral Stanley controller
-        using the following semantics:
-            K_V -- Gain term
-            K_S -- Stability term
-        :param args_longitudinal: dictionary of arguments to set the longitudinal
-        PID controller using the following semantics:
-            K_P -- Proportional term
-            K_D -- Differential term
-            K_I -- Integral term
-        :param offset: If different than zero, the vehicle will drive displaced from the center line.
-        Positive values imply a right offset while negative ones mean a left one. Numbers high enough
-        to cause the vehicle to drive through other lanes might break the controller.
+        :param opt_dict: dictionary of arguments with different parameters:
+            dt: time between simulation steps
+            target_speed: desired cruise speed in Km/h
+            sampling_radius: distance between the waypoints part of the plan
+            lateral_control_dict: values of the lateral PID controller
+            longitudinal_control_dict: values of the longitudinal PID controller
+            max_throttle: maximum throttle applied to the vehicle
+            max_brake: maximum brake applied to the vehicle
+            max_steering: maximum steering applied to the vehicle
+            offset: distance between the route waypoints and the center of the lane
+        :param map_inst: carla.Map instance to avoid the expensive call of getting it.
         """
-
-        self.max_brake = max_brake
-        self.max_throt = max_throttle
-        self.max_steer = max_steering
-
         self._vehicle = vehicle
         self._world = self._vehicle.get_world()
-        self.past_steering = self._vehicle.get_control().steer
-        self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
-        self._lat_controller = StanleyLateralController(self._vehicle, offset, **args_lateral)
-
-
-    def run_step(self, target_speed, waypoint):
-        """
-        Execute one step of control invoking both lateral and longitudinal
-        PID controllers to reach a target waypoint
-        at a given target_speed.
-
-            :param target_speed: desired vehicle speed
-            :param waypoint: target location encoded as a waypoint
-            :return: distance (in meters) to the waypoint
-        """
-
-        acceleration = self._lon_controller.run_step(target_speed)
-        current_steering = self._lat_controller.run_step()
-        control = carla.VehicleControl()
-        if acceleration >= 0.0:
-            control.throttle = min(acceleration, self.max_throt)
-            control.brake = 0.0
+        if map_inst:
+            if isinstance(map_inst, carla.Map):
+                self._map = map_inst
+            else:
+                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                self._map = self._world.get_map()
         else:
+            self._map = self._world.get_map()
+
+        self._vehicle_controller = None
+        self.target_waypoint = None
+        self.target_road_option = None
+
+        self._waypoints_queue = deque(maxlen=10000)
+        self._min_waypoint_queue_length = 100
+        self._stop_waypoint_creation = False
+
+        self._change_line = "None"
+
+        # Base parameters
+        self._dt = 1.0 / 20.0
+        self._target_speed = 20.0  # Km/h
+        self._sampling_radius = 2.0
+        self._args_lateral_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
+        self._args_lateral_dict_fast = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
+        self._args_longitudinal_dict = {'K_P': 0.0, 'K_I': 0.0, 'K_D': 0.0, 'dt': 0.0}
+        self._max_throt = 0.85
+        self._max_brake = 0.3
+        self._max_steer = 1.0
+        self._offset = 0
+        self._base_min_distance = 3.0
+        self._distance_ratio = 0.5
+        self._follow_speed_limits = False
+        self.delta = 0
+        self.dir = "left"
+
+        # Overload parameters
+        if opt_dict:
+            if 'dt' in opt_dict:
+                self._dt = opt_dict['dt']
+            if 'target_speed' in opt_dict:
+                self._target_speed = opt_dict['target_speed']
+            if 'sampling_radius' in opt_dict:
+                self._sampling_radius = opt_dict['sampling_radius']
+            if 'lateral_control_dict' in opt_dict:
+                self._args_lateral_dict = opt_dict['lateral_control_dict']
+            if 'lateral_control_dict_fast' in opt_dict:
+                self._args_lateral_dict_fast = opt_dict['lateral_control_dict_fast']
+            if 'longitudinal_control_dict' in opt_dict:
+                self._args_longitudinal_dict = opt_dict['longitudinal_control_dict']
+            if 'max_throttle' in opt_dict:
+                self._max_throt = opt_dict['max_throttle']
+            if 'max_brake' in opt_dict:carla.Location
+            if 'base_min_distance' in opt_dict:
+                self._base_min_distance = opt_dict['base_min_distance']
+            if 'distance_ratio' in opt_dict:
+                self._distance_ratio = opt_dict['distance_ratio']
+            if 'follow_speed_limits' in opt_dict:
+                self._follow_speed_limits = opt_dict['follow_speed_limits']
+
+        # initializing controller
+        self._init_controller()
+
+    def reset_vehicle(self):
+        """Reset the ego-vehicle"""
+        self._vehicle = None
+
+    def _init_controller(self):
+        """Controller initialization"""
+        self._vehicle_controller = VehicleController(self._vehicle,
+                                                        args_lateral=self._args_lateral_dict,
+                                                        args_longitudinal=self._args_longitudinal_dict,
+                                                        offset=self._offset,
+                                                        max_throttle=self._max_throt,
+                                                        max_brake=self._max_brake,
+                                                        max_steering=self._max_steer)
+
+        # Compute the current vehicle waypoint
+        current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
+        self.target_waypoint, self.target_road_option = (current_waypoint, RoadOption.LANEFOLLOW)
+        self._waypoints_queue.append((self.target_waypoint, self.target_road_option))
+
+    def set_speed(self, speed, i_surpass = False):
+        """
+        Changes the target speed
+
+        :param speed: new target speed in Km/h
+        :return:
+        """
+        """if self._follow_speed_limits:
+            print("WARNING: The max speed is currently set to follow the speed limits. "
+                  "Use 'follow_speed_limits' to deactivate this")"""
+        limit = self._vehicle.get_speed_limit()
+        print("LIMITE DI VEL: ",limit,'noi stiamo andando a ', get_speed(self._vehicle))
+        if speed > limit and not i_surpass:
+            print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
+            self._target_speed = limit + limit * 0.03
+        else:
+            self._target_speed = speed
+
+    def follow_speed_limits(self, value=True):
+        """
+        Activates a flag that makes the max speed dynamically vary according to the spped limits
+
+        :param value: bool
+        :return:
+        """
+        self._follow_speed_limits = value
+
+    def _compute_next_waypoints(self, k=1):
+        """
+        Add new waypoints to the trajectory queue.
+
+        :param k: how many waypoints to compute
+        :return:
+        """
+        # check we do not overflow the queue
+        available_entries = self._waypoints_queue.maxlen - len(self._waypoints_queue)
+        k = min(available_entries, k)
+
+        for _ in range(k):
+            last_waypoint = self._waypoints_queue[-1][0]
+            next_waypoints = list(last_waypoint.next(self._sampling_radius))
+
+            if len(next_waypoints) == 0:
+                break
+            elif len(next_waypoints) == 1:
+                # only one option available ==> lanefollowing
+                next_waypoint = next_waypoints[0]
+                road_option = RoadOption.LANEFOLLOW
+            else:
+                # random choice between the possible options
+                road_options_list = _retrieve_options(
+                    next_waypoints, last_waypoint)
+                road_option = random.choice(road_options_list)
+                next_waypoint = next_waypoints[road_options_list.index(
+                    road_option)]
+
+            self._waypoints_queue.append((next_waypoint, road_option))
+
+    def set_global_plan(self, current_plan, stop_waypoint_creation=True, clean_queue=True):
+        """
+        Adds a new plan to the local planner. A plan must be a list of [carla.Waypoint, RoadOption] pairs
+        The 'clean_queue` parameter erases the previous plan if True, otherwise, it adds it to the old one
+        The 'stop_waypoint_creation' flag stops the automatic creation of random waypoints
+
+        :param current_plan: list of (carla.Waypoint, RoadOption)
+        :param stop_waypoint_creation: bool
+        :param clean_queue: bool
+        :return:
+        """
+        if clean_queue:
+            self._waypoints_queue.clear()
+
+        # Remake the waypoints queue if the new plan has a higher length than the queue
+        new_plan_length = len(current_plan) + len(self._waypoints_queue)
+        if new_plan_length > self._waypoints_queue.maxlen:
+            new_waypoint_queue = deque(maxlen=new_plan_length)
+            for wp in self._waypoints_queue:
+                new_waypoint_queue.append(wp)
+            self._waypoints_queue = new_waypoint_queue
+            
+
+        for elem in current_plan:
+            self._waypoints_queue.append(elem)
+
+        self._stop_waypoint_creation = stop_waypoint_creation
+        self._vehicle_controller.setWaypoints(self._waypoints_queue)
+
+    def run_step(self, debug=False):
+        """
+        Execute one step of local planning which involves running the longitudinal and lateral PID controllers to
+        follow the waypoints trajectory.
+
+        :param debug: boolean flag to activate waypoints debugging
+        :return: control to be applied
+        """
+        changed = False
+        if self._follow_speed_limits:
+            self._target_speed = self._vehicle.get_speed_limit()
+
+        # Add more waypoints too few in the horizon
+        if not self._stop_waypoint_creation and len(self._waypoints_queue) < self._min_waypoint_queue_length:
+            self._compute_next_waypoints(k=self._min_waypoint_queue_length)
+
+        # Purge the queue of obsolete waypoints
+        veh_location = self._vehicle.get_location()
+        vehicle_speed = get_speed(self._vehicle) / 3.6
+        self._min_distance = self._base_min_distance + self._distance_ratio * vehicle_speed
+
+        num_waypoint_removed = 0
+        for waypoint, _ in self._waypoints_queue:
+
+            if len(self._waypoints_queue) - num_waypoint_removed == 1:
+                min_distance = 1  # Don't remove the last waypoint until very close by
+            else:
+                min_distance = self._min_distance
+
+            if veh_location.distance(waypoint.transform.location) < min_distance:
+                num_waypoint_removed += 1
+            else:
+                break
+
+        if num_waypoint_removed > 0:
+            for _ in range(num_waypoint_removed):
+                self._waypoints_queue.popleft()
+
+        # if changed == False and vehicle_speed > 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
+        #     changed = True
+        # if changed and vehicle_speed <= 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
+        #     changed = False
+
+        # Get the target waypoint and move using the PID controllers. Stop if no target waypoint
+        if len(self._waypoints_queue) == 0:
+            control = carla.VehicleControl()
+            control.steer = 0.0
             control.throttle = 0.0
-            control.brake = min(abs(acceleration), self.max_brake)
-
-        # Steering regulation: changes cannot happen abruptly, can't steer too much.
-        if current_steering > self.past_steering + 0.1:
-            current_steering = self.past_steering + 0.1
-        elif current_steering < self.past_steering - 0.1:
-            current_steering = self.past_steering - 0.1
-
-        if current_steering >= 0:
-            steering = min(self.max_steer, current_steering)
+            control.brake = 1.0
+            control.hand_brake = False
+            control.manual_gear_shift = False
         else:
-            steering = max(-self.max_steer, current_steering)
+            self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
+                    
+            if self._change_line == 'left':
+                print("self._change_line LEFT")
+                # input()
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
+            elif self._change_line == 'right':
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
+            elif self._change_line == 'shifting':
+                print("self._change_line SHIFTING")
+                # input()
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line, self.delta, self.dir)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
+            else:
+                self._vehicle_controller.ourSetNextWaypoint(self._change_line)
+                control = self._vehicle_controller.run_step(self._target_speed, self._map)
 
-        control.steer = steering
-        control.hand_brake = False
-        control.manual_gear_shift = False
-        self.past_steering = steering
+        #if True:
+           #draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
 
         return control
 
-
-    def change_longitudinal_PID(self, args_longitudinal):
-        """Changes the parameters of the PIDLongitudinalController"""
-        self._lon_controller.change_parameters(**args_longitudinal)
-
-    def change_lateral_controller(self, args_lateral):
-        """Changes the parameters of the StanleyLateralController"""
-        self._lat_controller.change_parameters(**args_lateral)
-    
-    def setWaypoints(self, waypoints):
-        self._lat_controller.setWaypoints(waypoints)
-
-
-class PIDLongitudinalController():
-    """
-    PIDLongitudinalController implements longitudinal control using a PID.
-    """
-
-    def __init__(self, vehicle, K_P=1.0, K_I=0.0, K_D=0.0, dt=0.03):
+    def run_step_only_lateral(self, debug=False):
         """
-        Constructor method.
+        Execute one step of local planning which involves running the longitudinal and lateral PID controllers to
+        follow the waypoints trajectory.
 
-            :param vehicle: actor to apply to local planner logic onto
-            :param K_P: Proportional term
-            :param K_D: Differential term
-            :param K_I: Integral term
-            :param dt: time differential in seconds
+        :param debug: boolean flag to activate waypoints debugging
+        :return: control to be applied
         """
-        self._vehicle = vehicle
-        self._k_p = K_P
-        self._k_i = K_I
-        self._k_d = K_D
-        self._dt = dt
-        self._error_buffer = deque(maxlen=10)
+        changed = False
 
-    def run_step(self, target_speed, debug=False):
-        """
-        Execute one step of longitudinal control to reach a given target speed.
+        # Add more waypoints too few in the horizon
+        if not self._stop_waypoint_creation and len(self._waypoints_queue) < self._min_waypoint_queue_length:
+            self._compute_next_waypoints(k=self._min_waypoint_queue_length)
 
-            :param target_speed: target speed in Km/h
-            :param debug: boolean for debugging
-            :return: throttle control
-        """
-        current_speed = get_speed(self._vehicle)
+        # Purge the queue of obsolete waypoints
+        veh_location = self._vehicle.get_location()
+        vehicle_speed = get_speed(self._vehicle) / 3.6
+        self._min_distance = self._base_min_distance + self._distance_ratio * vehicle_speed
 
-        if debug:
-            print('Current speed = {}'.format(current_speed))
+        num_waypoint_removed = 0
+        for waypoint, _ in self._waypoints_queue:
 
-        return self._pid_control(target_speed, current_speed)
+            if len(self._waypoints_queue) - num_waypoint_removed == 1:
+                min_distance = 1  # Don't remove the last waypoint until very close by
+            else:
+                min_distance = self._min_distance
 
-    def _pid_control(self, target_speed, current_speed):
-        """
-        Estimate the throttle/brake of the vehicle based on the PID equations
-
-            :param target_speed:  target speed in Km/h
-            :param current_speed: current speed of the vehicle in Km/h
-            :return: throttle/brake control
-        """
-
-        error = target_speed - current_speed
-        self._error_buffer.append(error)
-
-        if len(self._error_buffer) >= 2:
-            _de = (self._error_buffer[-1] - self._error_buffer[-2]) / self._dt
-            _ie = sum(self._error_buffer) * self._dt
-        else:
-            _de = 0.0
-            _ie = 0.0
-
-        return np.clip((self._k_p * error) + (self._k_d * _de) + (self._k_i * _ie), -1.0, 1.0)
-
-    def change_parameters(self, K_P, K_I, K_D, dt):
-        """Changes the PID parameters"""
-        self._k_p = K_P
-        self._k_i = K_I
-        self._k_d = K_D
-        self._dt = dt
-
-class StanleyLateralController():
-    """
-    StanleyLateralController implements lateral control using a Stanley.
-    """
-
-    def __init__(self, vehicle, offset=0, lookahead_distance=1.0, K_V=1.0, K_S=0.0, dt=0.03):
-        """
-        Constructor method.
-
-            :param vehicle: actor to apply to local planner logic onto
-            :param offset: distance to the center line. If might cause issues if the value
-                is large enough to make the vehicle invade other lanes.
-            :param lookahead_distance: Distance to lookahead
-            :param K_V: Proportional term
-            :param K_S: Differential term
-            :param dt: time differential in seconds
-        """
-        self._vehicle = vehicle
-        self._kv = K_V
-        self._ks = K_S
-        self._dt = dt
-        self._wps = None
-        self._lookahead_distance = lookahead_distance
-        self._offset = offset
-
-    def run_step(self):
-        """
-        Execute one step of lateral control to steer
-        the vehicle towards a certain waypoin.
-
-            :return: steering control in the range [-1, 1] where:
-            -1 maximum steering to left
-            +1 maximum steering to right
-        """
-        return self._stanley_control(self._vehicle.get_transform())
-    
-    def _get_lookahead_index(self, ego_loc, lookahead_distance):
-        min_idx       = 0
-        min_dist      = float("inf")
-        for i in range(len(self._wps)):
-            dist = np.linalg.norm(np.array([
-                    self._wps[i][0].transform.location.x - ego_loc.x,
-                    self._wps[i][0].transform.location.y - ego_loc.y]))
-            if dist < min_dist:
-                min_dist = dist
-                min_idx = i
-
-        total_dist = min_dist
-        lookahead_idx = min_idx
-        for i in range(min_idx + 1, len(self._wps)):
-            if total_dist >= lookahead_distance:
+            if veh_location.distance(waypoint.transform.location) < min_distance:
+                num_waypoint_removed += 1
+            else:
                 break
-            total_dist += np.linalg.norm(np.array([
-                    self._wps[i][0].transform.location.x - self._wps[i-1][0].transform.location.x,
-                    self._wps[i][0].transform.location.y - self._wps[i-1][0].transform.location.y]))
-            lookahead_idx = i
-        return lookahead_idx
+
+        if num_waypoint_removed > 0:
+            for _ in range(num_waypoint_removed):
+                self._waypoints_queue.popleft()
+
+        # if changed == False and vehicle_speed > 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict_fast)
+        #     changed = True
+        # if changed and vehicle_speed <= 45:
+        #     self._vehicle_controller.change_lateral_controller(self._args_lateral_dict)
+        #     changed = False
+
+        # Get the target waypoint and move using the PID controllers. Stop if no target waypoint
+        if len(self._waypoints_queue) == 0:
+            control = carla.VehicleControl()
+            control.steer = 0.0
+            control.throttle = 0.0
+            control.brake = 1.0
+            control.hand_brake = False
+            control.manual_gear_shift = False
+        else:
+            self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
+
+            control = self._vehicle_controller.run_step_only_lateral(self.target_waypoint, self._map)
     
-    def _stanley_control(self, vehicle_transform):
-        """
-        Estimate the steering angle of the vehicle based on the Stanley equations
-
-            :param vehicle_transform: current transform of the vehicle
-            :return: steering control in the range [-1, 1]
-        """
-        # Get ego vehicle observations
-        ego_loc = vehicle_transform.location
-        speed_estimate = get_speed(self._vehicle)
-        observed_heading = np.deg2rad(vehicle_transform.rotation.yaw)
-        observed_x = ego_loc.x
-        observed_y = ego_loc.y
-        
-        # Get Target Waypoint
-        ce_idx = self._get_lookahead_index(ego_loc,self._lookahead_distance)
-        desired_x = self._wps[ce_idx][0].transform.location.x
-        desired_y = self._wps[ce_idx][0].transform.location.y
-        
-        # Get Target Heading
-        if ce_idx < len(self._wps)-1:
-            desired_heading_x = self._wps[ce_idx+1][0].transform.location.x - self._wps[ce_idx][0].transform.location.x
-            desired_heading_y = self._wps[ce_idx+1][0].transform.location.y - self._wps[ce_idx][0].transform.location.y
-        else:
-            desired_heading_x = self._wps[ce_idx][0].transform.location.x - self._wps[ce_idx-1][0].transform.location.x
-            desired_heading_y = self._wps[ce_idx][0].transform.location.y - self._wps[ce_idx-1][0].transform.location.y
-        
-        # Trajectory Heading
-        desired_heading = atan2(desired_heading_y, desired_heading_x)
-        
-        # Trajectory Distance
-        dd=hypot(desired_heading_x, desired_heading_y)
-        
-        # Crosstrack error
-        lateral_error = \
-              ((observed_x-desired_x)*desired_heading_y -
-              (observed_y-desired_y)*desired_heading_x) / (dd + sys.float_info.epsilon)
-        
-        # Heading error
-        steering = (desired_heading-observed_heading)
-        
-        # Normalization to [-pi, pi]
-        while (steering<-np.pi):
-            steering += 2*np.pi
-        while (steering>np.pi):
-            steering -= 2*np.pi
             
-        steering_error = steering
-        
-        # Stanley Control Law   
-        steering += atan(self._kv * lateral_error /
-                               (self._ks + speed_estimate))
-        
-        # print("Current Heading: ", observed_heading, " - Desired Heading: ", desired_heading)
-        # print("Heading error: ", steering_error, "Crosstrack error: ", lateral_error)
-        # print("Output: ", steering)
-        
-        return np.clip(steering, -1.0, 1.0)
 
-    def change_parameters(self, Kv, Ks, dt):
-        """Changes the Stanley parameters"""
-        self._kv = Kv
-        self._ks = Ks
-        self._dt = dt
+        #if True:
+           #draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
+
+        return control
+
+    def get_incoming_waypoint_and_direction(self, steps=3, all_list=False):
+        """
+        Returns direction and waypoint at a distance ahead defined by the user.
+
+            :param steps: number of steps to get the incoming waypoint.
+        """
+        if len(self._waypoints_queue) > steps:
+            if all_list:
+                to_ret = [self._waypoints_queue[i] for i in range(steps)]
+                return to_ret
+            else:
+                return self._waypoints_queue[steps]
+
+        else:
+            try:
+                wpt, direction = self._waypoints_queue[-1]
+                return wpt, direction
+            except IndexError as i:
+                return None, RoadOption.VOID
+
+    def get_plan(self):
+        """Returns the current plan of the local planner"""
+        return self._waypoints_queue
+
+    def done(self):
+        """
+        Returns whether or not the planner has finished
+
+        :return: boolean
+        """
+        return len(self._waypoints_queue) == 0
+
+
+def _retrieve_options(list_waypoints, current_waypoint):
+    """
+    Compute the type of connection between the current active waypoint and the multiple waypoints present in
+    list_waypoints. The result is encoded as a list of RoadOption enums.
+
+    :param list_waypoints: list with the possible target waypoints in case of multiple options
+    :param current_waypoint: current active waypoint
+    :return: list of RoadOption enums representing the type of connection from the active waypoint to each
+             candidate in list_waypoints
+    """
+    options = []
+    for next_waypoint in list_waypoints:
+        # this is needed because something we are linking to
+        # the beggining of an intersection, therefore the
+        # variation in angle is small
+        next_next_waypoint = next_waypoint.next(3.0)[0]
+        link = _compute_connection(current_waypoint, next_next_waypoint)
+        options.append(link)
+
+    return options
+
+
+def _compute_connection(current_waypoint, next_waypoint, threshold=35):
+    """
+    Compute the type of topological connection between an active waypoint (current_waypoint) and a target waypoint
+    (next_waypoint).
+
+    :param current_waypoint: active waypoint
+    :param next_waypoint: target waypoint
+    :return: the type of topological connection encoded as a RoadOption enum:
+             RoadOption.STRAIGHT
+             RoadOption.LEFT
+             RoadOption.RIGHT
+    """
+    n = next_waypoint.transform.rotation.yaw
+    n = n % 360.0
+
+    c = current_waypoint.transform.rotation.yaw
+    c = c % 360.0
+
+    diff_angle = (n - c) % 180.0
+    if diff_angle < threshold or diff_angle > (180 - threshold):
+        return RoadOption.STRAIGHT
+    elif diff_angle > 90.0:
+        return RoadOption.LEFT
+    else:
+        return RoadOption.RIGHT
     
-    def setWaypoints(self, wps):
-        """Sets trajectory to follow and filters spurious points"""
-        self._wps = [wps[0]]
-        for i in range(1, len(wps) - 1):
-            trj_heading_x = wps[i][0].transform.location.x - self._wps[-1][0].transform.location.x
-            trj_heading_y = wps[i][0].transform.location.y - self._wps[-1][0].transform.location.y
-            
-            dd = hypot(trj_heading_x, trj_heading_y)
-            if dd > 0:
-                self._wps.append(wps[i])
-        
-class PIDLateralController():
-    """
-    PIDLateralController implements lateral control using a PID.
-    """
 
-    def __init__(self, vehicle, offset=0, K_P=1.0, K_I=0.0, K_D=0.0, dt=0.03):
-        """
-        Constructor method.
-
-            :param vehicle: actor to apply to local planner logic onto
-            :param offset: distance to the center line. If might cause issues if the value
-                is large enough to make the vehicle invade other lanes.
-            :param K_P: Proportional term
-            :param K_D: Differential term
-            :param K_I: Integral term
-            :param dt: time differential in seconds
-        """
-        self._vehicle = vehicle
-        self._k_p = K_P
-        self._k_i = K_I
-        self._k_d = K_D
-        self._dt = dt
-        self._offset = offset
-        self._e_buffer = deque(maxlen=10)
-
-    def run_step(self, waypoint):
-        """
-        Execute one step of lateral control to steer
-        the vehicle towards a certain waypoin.
-
-            :param waypoint: target waypoint
-            :return: steering control in the range [-1, 1] where:
-            -1 maximum steering to left
-            +1 maximum steering to right
-        """
-        return self._pid_control(waypoint, self._vehicle.get_transform())
-
-    def _pid_control(self, waypoint, vehicle_transform):
-        """
-        Estimate the steering angle of the vehicle based on the PID equations
-
-            :param waypoint: target waypoint
-            :param vehicle_transform: current transform of the vehicle
-            :return: steering control in the range [-1, 1]
-        """
-        # Get the ego's location and forward vector
-        ego_loc = vehicle_transform.location
-        v_vec = vehicle_transform.get_forward_vector()
-        v_vec = np.array([v_vec.x, v_vec.y, 0.0])
-
-        # Get the vector vehicle-target_wp
-        if self._offset != 0:
-            # Displace the wp to the side
-            w_tran = waypoint.transform
-            r_vec = w_tran.get_right_vector()
-            w_loc = w_tran.location + carla.Location(x=self._offset*r_vec.x,
-                                                         y=self._offset*r_vec.y)
-        else:
-            w_loc = waypoint.transform.location
-
-        w_vec = np.array([w_loc.x - ego_loc.x,
-                          w_loc.y - ego_loc.y,
-                          0.0])
-
-        wv_linalg = np.linalg.norm(w_vec) * np.linalg.norm(v_vec)
-        if wv_linalg == 0:
-            _dot = 1
-        else:
-            _dot = math.acos(np.clip(np.dot(w_vec, v_vec) / (wv_linalg), -1.0, 1.0))
-        _cross = np.cross(v_vec, w_vec)
-        if _cross[2] < 0:
-            _dot *= -1.0
-
-        self._e_buffer.append(_dot)
-        if len(self._e_buffer) >= 2:
-            _de = (self._e_buffer[-1] - self._e_buffer[-2]) / self._dt
-            _ie = sum(self._e_buffer) * self._dt
-        else:
-            _de = 0.0
-            _ie = 0.0
-
-        return np.clip((self._k_p * _dot) + (self._k_d * _de) + (self._k_i * _ie), -1.0, 1.0)
-
-    def change_parameters(self, K_P, K_I, K_D, dt):
-        """Changes the PID parameters"""
-        self._k_p = K_P
-        self._k_i = K_I
-        self._k_d = K_D
-        self._dt = dt
