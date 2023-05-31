@@ -159,9 +159,9 @@ class LocalPlanner(object):
             print("WARNING: The max speed is currently set to follow the speed limits. "
                   "Use 'follow_speed_limits' to deactivate this")"""
         limit = self._vehicle.get_speed_limit()
-        print("LIMITE DI VEL: ",limit,'noi stiamo andando a ', get_speed(self._vehicle))
+        # print("LIMITE DI VEL: ",limit,'noi stiamo andando a ', get_speed(self._vehicle))
         if speed > limit and not i_surpass:
-            print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
+            # print(f"La velocità da settare ({speed}) è maggiore di quella consentita ({limit}), cast alla massima consentita")
             self._target_speed = limit + limit * 0.03
         else:
             self._target_speed = speed
@@ -292,7 +292,7 @@ class LocalPlanner(object):
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
                     
             if self._change_line == 'left':
-                print("self._change_line LEFT")
+                # print("self._change_line LEFT")
                 # input()
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line)
                 control = self._vehicle_controller.run_step(self._target_speed, self._map)
@@ -300,7 +300,7 @@ class LocalPlanner(object):
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line)
                 control = self._vehicle_controller.run_step(self._target_speed, self._map)
             elif self._change_line == 'shifting':
-                print("self._change_line SHIFTING")
+                # print("self._change_line SHIFTING")
                 # input()
                 self._vehicle_controller.ourSetNextWaypoint(self._change_line, self.delta, self.dir)
                 control = self._vehicle_controller.run_step(self._target_speed, self._map)
