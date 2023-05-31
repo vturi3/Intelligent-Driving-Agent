@@ -394,7 +394,10 @@ class BasicAgent(object):
             if stop_sign.id in self._stop_map:
                 trigger_wp = self._stop_map[stop_sign.id]
             else:
-                trigger_location = get_trafficlight_trigger_location(stop_sign)
+                try:
+                    trigger_location = get_trafficlight_trigger_location(stop_sign)
+                except:
+                    continue
                 trigger_wp = self._map.get_waypoint(trigger_location)
                 self._stop_map[stop_sign.id] = trigger_wp
 
