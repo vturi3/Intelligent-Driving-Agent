@@ -289,9 +289,12 @@ class BasicAgent(object):
             if traffic_light.id in self._lights_map:
                 trigger_wp = self._lights_map[traffic_light.id]
             else:
-                trigger_location = get_trafficlight_trigger_location(traffic_light)
-                trigger_wp = self._map.get_waypoint(trigger_location)
-                self._lights_map[traffic_light.id] = trigger_wp
+                try:
+                  trigger_location = get_trafficlight_trigger_location(traffic_light)
+                  trigger_wp = self._map.get_waypoint(trigger_location)
+                  self._lights_map[traffic_light.id] = trigger_wp
+                 except:
+                    continue
 
             if trigger_wp.transform.location.distance(ego_vehicle_location) > max_distance:
                 continue
