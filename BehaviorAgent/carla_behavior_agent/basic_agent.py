@@ -51,7 +51,7 @@ class BasicAgent(object):
             if isinstance(map_inst, carla.Map):
                 self._map = map_inst
             else:
-                # print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._map = self._world.get_map()
         else:
             self._map = self._world.get_map()
@@ -108,7 +108,7 @@ class BasicAgent(object):
             if isinstance(grp_inst, GlobalRoutePlanner):
                 self._global_planner = grp_inst
             else:
-                # print("Warning: Ignoring the given map as it is not a 'carla.Map'")
+                print("Warning: Ignoring the given map as it is not a 'carla.Map'")
                 self._global_planner = GlobalRoutePlanner(self._map, self._sampling_resolution)
         else:
             self._global_planner = GlobalRoutePlanner(self._map, self._sampling_resolution)
@@ -295,7 +295,7 @@ class BasicAgent(object):
             max_distance = self._base_tlight_threshold
         # qua verifico se mi sono gia fermato allo step precedete.
         if self._last_traffic_light:
-            print("self._last_traffic_light: ", self._last_traffic_light, "self._last_traffic_light.state: ", self._last_traffic_light.state)
+            #print("self._last_traffic_light: ", self._last_traffic_light, "self._last_traffic_light.state: ", self._last_traffic_light.state)
             
             if self._last_traffic_light.state != carla.TrafficLightState.Red and self._last_traffic_light.state != carla.TrafficLightState.Yellow:
                 self._last_traffic_light = None
@@ -362,8 +362,8 @@ class BasicAgent(object):
 
         if not max_distance:
             max_distance = self._base_stop_threshold*2
-            print("self._base_stop_threshold: ", self._base_stop_threshold*2)
-        print("max_distance: ", max_distance)
+            #print("self._base_stop_threshold: ", self._base_stop_threshold*2)
+        # print("max_distance: ", max_distance)
         # qua verifico se mi sono gia fermato allo step precedete.
         
         
@@ -412,7 +412,7 @@ class BasicAgent(object):
             ve_dir = ego_vehicle_waypoint.transform.get_forward_vector()
             wp_dir = trigger_wp.transform.get_forward_vector() 
             dot_ve_wp = ve_dir.x * wp_dir.x + ve_dir.y * wp_dir.y + ve_dir.z * wp_dir.z
-            print("devo ceccare se ci sta uno stop (ci sta ma non se va bene): ")
+            # print("devo ceccare se ci sta uno stop (ci sta ma non se va bene): ")
 
             if dot_ve_wp < 0:
                 continue
@@ -425,18 +425,18 @@ class BasicAgent(object):
                                 target_polygon = Polygon(target_list)
                                 
                                 if ego_polygon.intersects(target_polygon):
-                                    print('Interseco con un vehicle davanti nello stop :(')
+                                    # print('Interseco con un vehicle davanti nello stop :(')
                                     # draw_bbox(self._world, target_vehicle,color=carla.Color(0,0,255,0))
                                     return (True, stop_sign,dist_from_stop-2)
                 if dist_from_stop < 2.5:
                     self._last_time_stop_sign = self._world.get_snapshot().timestamp.elapsed_seconds
                     self._last_stop_signid = stop_sign.id
                      
-                print("ho visto uno stop si trova a: ", stop_sign, "dista: ", dist_from_stop)
+                # print("ho visto uno stop si trova a: ", stop_sign, "dista: ", dist_from_stop)
                 # input()
                 return (True, stop_sign,dist_from_stop)
-            else:
-                print("ho visto che non sta sulla mia strada")
+            # else:
+                # print("ho visto che non sta sulla mia strada")
 
         return (False, None,0.0)
     
@@ -770,7 +770,7 @@ class BasicAgent(object):
             # dove si trova e dove voglio andare, Obj waypoint molto smart ha tanta roba. 
             # Simplified version for outside junctions, verifica se non siamo nell'incrocio, se nn sto nella stessa strada e nn sto nella stessa lane dell'obj, prendi prossimo waypoint
             if not ego_wpt.is_junction or not target_wpt.is_junction:
-                # # print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                # print("ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
                 next_lane = ego_wpt.lane_id
                 try:
                     if self._direction == RoadOption.CHANGELANELEFT:
@@ -790,7 +790,7 @@ class BasicAgent(object):
                 # tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
                 
                 if "walker" in target_vehicle.type_id:
-                    print("questo è proprio un piedone")
+                    # print("questo è proprio un piedone")
                     # input()
                     tv_bb_coords = target_vehicle.bounding_box.get_world_vertices(target_vehicle.get_transform())
                     tv_vertexs_lane_id = [(self._map.get_waypoint(bb_coord, lane_type=carla.LaneType.Any)).lane_id for bb_coord in tv_bb_coords]   
@@ -806,10 +806,10 @@ class BasicAgent(object):
                     angle = math.degrees(math.acos(ego_forward_vector.dot(target_forward_vector)))
                 except:
                     angle = 0
-                print(angle)
+                # print(angle)
                 # In alcuni casi gli oggetti intenzionati ad attraversare non venivano rilevati sulla nostra lane, in questo caso forziamo il considerare di tale oggetto aggiungendo alla lista dei vertici quello della nostra lane. (casi biciclette o pedoni che attraversano)
                 if 80<angle<110 and target_wpt.lane_id == ego_wpt.lane_id + 1 and "static" not in target_vehicle.type_id:
-                    print("un oggetto vuole attraversasre dobbiamo stare attenti ",angle)
+                    # print("un oggetto vuole attraversasre dobbiamo stare attenti ",angle)
                     tv_vertexs_lane_id.append(ego_wpt.lane_id)
                     
                     # input()
@@ -821,16 +821,16 @@ class BasicAgent(object):
 
                 #### check for semi perpendicolarita ####
 
-                # # #print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
-                # # #print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
-                # # #print("len(on_same_lane): ",len(on_same_lane))
+                # print("ego_vertexs_lane_id:", ego_vertexs_lane_id)
+                # print("tv_vertexs_lane_id:", tv_vertexs_lane_id)
+                # print("len(on_same_lane): ",len(on_same_lane))
                 # print("tv_vertexs_lane_id: ", tv_vertexs_lane_id, "ego_vertexs_lane_id: ", ego_vertexs_lane_id)
                 # input()
                 # se entro qui l'obj non si trova sulla mia lane (ancora)
                 if (target_wpt.road_id != ego_wpt.road_id or len(on_same_lane) == 0) :
                     # print("potrei non considerarlo l'obj")
                     # input()
-                    # # #print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
+                    # print("dopo if ego_wpt.lane_id: ",ego_wpt.lane_id, "la lane id del target è: ",target_wpt.lane_id, "e la mia direction è", self._direction)
 
                     # Recuperiamo dalla coda dei waypoint nel local Planner i waypoint successivi in base alla direzione che abbiamo.
                     if self._direction == RoadOption.RIGHT or self._direction == RoadOption.LEFT:
@@ -868,10 +868,10 @@ class BasicAgent(object):
                 is_within,dist = our_is_within_distance(target_rear_transform, ego_front_transform,target_rear_extent,ego_rear_extent, max_distance, [low_angle_th, up_angle_th])
                 if dist < 0:
                     dist = 0.5
-                # # print(dist)
+                # print(dist)
                 condToRet = (np.dot(np.array([target_forward_vector.x,target_forward_vector.y, target_forward_vector.z]), np.array([ego_forward_vector.x,ego_forward_vector.y,ego_forward_vector.z])) > 0 or self._direction == RoadOption.CHANGELANELEFT or self._direction == RoadOption.CHANGELANERIGHT or ego_wpt.lane_id in tv_vertexs_lane_id)
                 if is_within and condToRet:
-                    print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
+                    # print("un obj possibile collisione: ", target_vehicle, "dist: ", dist)
                     # input()
                     return (True, target_vehicle, dist)
 
@@ -964,18 +964,18 @@ class BasicAgent(object):
             target_polygon = Polygon(target_list)
 
             if ego_polygon.intersects(target_polygon):
-                print('INTERSECTION: Colpisco boundingBox')
+                # print('INTERSECTION: Colpisco boundingBox')
                 if hero_polygon.intersects(target_polygon):
                     ffv_target_vehicle = target_vehicle.get_transform().get_forward_vector()
 
                     angle = math.degrees(math.acos(ffv_hero_vehicle.dot(ffv_target_vehicle)))
 
-                    print(angle, target_vehicle)
+                    # print(angle, target_vehicle)
 
                     if target_vehicle.get_transform().location.distance(wp.transform.location) > ego_location.distance(wp.transform.location):
                         if angle < 57:
                             self._local_planner.set_speed(self._vehicle.get_speed_limit())
-                            print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
+                            # print('GESTIONE_INCROCI: Sono gia nel mezzo del BBOX, non ti fermare pazzo!!!')
                             return (False, None, -1)
 
                 #return (True, target_vehicle, compute_distance(target_vehicle.get_location(), ego_location))

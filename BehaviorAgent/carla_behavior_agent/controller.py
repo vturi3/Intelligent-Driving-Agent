@@ -306,7 +306,7 @@ class StanleyLateralController():
         #draw_waypoints(self._vehicle.get_world(), [self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0]], 1.0)
         desired_x = wp_to_follow.transform.location.x
         desired_y = wp_to_follow.transform.location.y
-        print("ce_idx: ", ce_idx)
+        #print("ce_idx: ", ce_idx)
         # print(self._wps[ce_idx-1][0],wp_to_follow,self._wps[ce_idx+1][0],self._wps[ce_idx+2][0],self._wps[ce_idx+3][0],self._wps[ce_idx+4][0],self._wps[ce_idx+5][0],self._wps[ce_idx+6][0],self._wps[ce_idx+7][0],self._wps[ce_idx+8][0],self._wps[ce_idx+9][0])
         # Get Target Heading
         if ce_idx < len(self._wps)-1:
@@ -393,25 +393,25 @@ class StanleyLateralController():
                 diff_norm = np.linalg.norm(diff)
             if diff_norm > 0:
                 diff_normalized = diff / diff_norm
-                print("diff_normalized: ", diff_normalized)
-                print("real_delta: ", real_delta)
+                #print("diff_normalized: ", diff_normalized)
+                #print("real_delta: ", real_delta)
                 displacement = diff_normalized * real_delta
                 waypoint = wp_to_follow
-                print("self._wps[wp_index][0].transform.location: ", waypoint.transform.location)
+                #print("self._wps[wp_index][0].transform.location: ", waypoint.transform.location)
                 x = waypoint.transform.location.x + displacement[0]
                 y = waypoint.transform.location.y + displacement[1]
                 z = waypoint.transform.location.z + displacement[2]
                 new_location = carla.Location(x, y, z)
                 wp_to_follow = MyWaypoint(new_location, waypoint.transform.rotation)
-                print("self._wps[wp_index][0].transform.location", wp_to_follow.get_transform().location)
-                print("self._wps[wp_index][0].transform.location", wp_to_follow.transform.location)
+                #print("self._wps[wp_index][0].transform.location", wp_to_follow.get_transform().location)
+                #print("self._wps[wp_index][0].transform.location", wp_to_follow.transform.location)
         else:
             first_index = wp_index
             try:
                 if (self._wps[wp_index-1][0].lane_id == self._wps[wp_index+1][0].lane_id) and self._wps[wp_index+1][0].lane_id != wp_to_follow.lane_id:
-                    print("self._wps[wp_index+1][0].lane_id: ", self._wps[wp_index+1][0].lane_id)
+                    #print("self._wps[wp_index+1][0].lane_id: ", self._wps[wp_index+1][0].lane_id)
                     wp_index += 1
-                    print("wp_to_follow.lane_id: ", wp_to_follow.lane_id)
+                    #print("wp_to_follow.lane_id: ", wp_to_follow.lane_id)
                     # input()
             except:
                 wp_index = first_index
