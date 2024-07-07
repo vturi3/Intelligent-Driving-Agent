@@ -1,7 +1,8 @@
 # Autonomous Vehicle Driving Project with CARLA Simulator
 
-![CARLA Simulator](carla.jpg)
-
+<div align="center">
+  <img src="carla.jpg" alt="CARLA Simulator">
+</div>
 ## Description 
 This repository contains the code and related documentation for a group project focused on the development of an autonomous driving system using CARLA simulator. The use of a simulator like this has the benefit of providing powerful and realistic virtual environment that allows the development of an autonomous driving system in a safe and controlled manner. The simulator offered a comprehensive set of simplified models and representations of various elements, including road infrastructure, traffic dynamics, and sensor simulations. This allowed the development of the system to focus on specific aspects such as control algorithms and decision-making strategies, without being overwhelmed by the complexity and variability of real-world scenarios, having the guarantee that at all times it is possible to know from the sorrounding world all the information useful for decision-making. This last aspect is not possible in real-world scenarios where, to give a trivial example, it is not possible to easily trace in real-time the position, speed and acceleration of other vehicles present in the world or to easily have the precise location and status of every object. It is important to specify this to emphasize that the obtained results, which are extremely promising, would be the same only if such information were also obtainable in the real world, making our system safely applicable.
 The goal of the proposed implementation was to achieve a system that would take into account the maximum number of situations and that would be as general as possible, using the extra routes, not used during the code implementation, as "test set". 
