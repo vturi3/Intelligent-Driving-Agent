@@ -12,12 +12,12 @@ The results obtained on the optional routes are clearly improvable in future dev
 
 ## Repository Structure
 - `Project_code/`:
-    - `AVD_PID_Implementation/`: contains the developed software using PID controller as lateral controller;
-    - `AVD_Stanley_Implementation/`: contains the developed software using Stanley controller as lateral controller.
-  - `Highlights/`: contains a series of short videos depicting the operation of the system in particular situations of the various routes.
-  - `Result/`: contains the json file of the results obtained on extra routes.
-  - `Test/`: contains the json file of the results obtained on the mandatory routes, both using PID and Stanley lateral controllers, running the developed system on various machines, in order to make the results more reliable, as stated in the report.
-  - `Project_report.pdf`: a report including a comprehensive analysis of the implementation logic of developed features and obtained results.
+  - `AVD_PID_Implementation/`: contains the developed software using PID controller as lateral controller;
+  - `AVD_Stanley_Implementation/`: contains the developed software using Stanley controller as lateral controller.
+- `Highlights/`: contains a series of short videos depicting the operation of the system in particular situations of the various routes.
+- `Result/`: contains the json file of the results obtained on extra routes.
+- `Test/`: contains the json file of the results obtained on the mandatory routes, both using PID and Stanley lateral controllers, running the developed system on various machines, in order to make the results more reliable, as stated in the report.
+- `Project_report.pdf`: a report including a comprehensive analysis of the implementation logic of developed features and obtained results.
 
 ## Implemented Features
 Two different implementations are proposed that refer to the use of the Stanley controller and the PID controller as lateral controllers. For both versions, the following features has been implemented:
